@@ -1,0 +1,348 @@
+const productLoading =
+    document.getElementById("productLoading");
+
+const productError =
+    document.getElementById("productError");
+
+const productContent =
+    document.getElementById("productContent");
+
+const sellerSection =
+    document.getElementById("sellerSection");
+
+const mainMedia =
+    document.getElementById("mainMedia");
+
+const mediaList =
+    document.getElementById("mediaList");
+
+const productTitle =
+    document.getElementById("productTitle");
+
+const productPrice =
+    document.getElementById("productPrice");
+
+const productCategory =
+    document.getElementById("productCategory");
+
+const productCondition =
+    document.getElementById("productCondition");
+
+const productStock =
+    document.getElementById("productStock");
+
+const productLocation =
+    document.getElementById("productLocation");
+
+const productDescription =
+    document.getElementById("productDescription");
+
+const sellerName =
+    document.getElementById("sellerName");
+
+const sellerEmail =
+    document.getElementById("sellerEmail");
+
+const sellerPhone =
+    document.getElementById("sellerPhone");
+
+const sellerAvatar =
+    document.getElementById("sellerAvatar");
+
+const chatSellerButton =
+    document.getElementById("chatSellerButton");
+
+const likeButton =
+    document.getElementById("likeButton");
+
+
+const params =
+    new URLSearchParams(window.location.search);
+
+const productId =
+    params.get("id");
+
+
+let currentProduct = null;
+
+
+async function loadProduct() {
+
+    if (!productId) {
+        showError();
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(`/api/products/${productId}`);
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Product not found"
+            );
+        }
+
+        currentProduct = data.product;
+
+        renderProduct(currentProduct);
+
+    } catch (error) {
+
+        console.error(
+            "Product loading error:",
+            error
+        );
+
+        showError();
+    }
+}
+
+
+function renderProduct(product) {
+
+    productLoading.classList.add("hidden");
+
+    productError.classList.add("hidden");
+
+    productContent.classList.remove("hidden");
+
+    sellerSection.classList.remove("hidden");
+
+
+    productTitle.textContent =
+        product.title;
+
+    productPrice.textContent =
+        `${formatPrice(product.price)} ${product.currency || "RWF"}`;
+
+    productCategory.textContent =
+        product.category || "Other";
+
+    productCondition.textContent =
+        `Condition: ${product.condition || "new"}`;
+
+    productStock.textContent =
+        `Stock: ${product.stock ?? 0}`;
+
+    productLocation.textContent =
+        `📍 ${product.location || "Location not specified"}`;
+
+    productDescription.textContent =
+        product.description;
+
+
+    renderMedia(product);
+
+    renderSeller(product.seller);
+
+
+    likeButton.textContent =
+        `♡ Like (${product.likes || 0})`;
+
+
+    chatSellerButton.onclick =
+        startChatWithSeller;
+}
+
+
+function renderMedia(product) {
+
+    mainMedia.innerHTML = "";
+    mediaList.innerHTML = "";
+
+
+    const images =
+        Array.isArray(product.images)
+            ? product.images
+            : [];
+
+
+    if (images.length === 0 && !product.video) {
+
+        mainMedia.textContent =
+            "No media available";
+
+        return;
+    }
+
+
+    if (images.length > 0) {
+
+        showImage(images[0]);
+
+        images.forEach(
+            (image, index) => {
+
+                const thumb =
+                    document.createElement("div");
+
+                thumb.className =
+                    "media-thumb";
+
+                if (index === 0) {
+                    thumb.classList.add("active");
+                }
+
+                thumb.innerHTML =
+                    `<img src="${escapeHtml(image)}" alt="Product image">`;
+
+                thumb.onclick = () => {
+
+                    document
+                        .querySelectorAll(".media-thumb")
+                        .forEach(item =>
+                            item.classList.remove("active")
+                        );
+
+                    thumb.classList.add("active");
+
+                    showImage(image);
+                };
+
+                mediaList.appendChild(thumb);
+            }
+        );
+    }
+
+
+    if (product.video) {
+
+        const videoButton =
+            document.createElement("button");
+
+        videoButton.className =
+            "secondary-button";
+
+        videoButton.textContent =
+            "▶ View Video";
+
+        videoButton.onclick = () => {
+
+            mainMedia.innerHTML = `
+                <video
+                    src="${escapeHtml(product.video)}"
+                    controls
+                    autoplay
+                ></video>
+            `;
+        };
+
+        mediaList.appendChild(videoButton);
+    }
+}
+
+
+function showImage(image) {
+
+    mainMedia.innerHTML = `
+        <img
+            src="${escapeHtml(image)}"
+            alt="${escapeHtml(currentProduct.title)}"
+        >
+    `;
+}
+
+
+function renderSeller(seller) {
+
+    if (!seller) {
+
+        sellerName.textContent =
+            "Unknown seller";
+
+        return;
+    }
+
+
+    const fullName =
+        `${seller.firstName || ""} ${seller.lastName || ""}`.trim();
+
+
+    sellerName.textContent =
+        fullName || "Seller";
+
+
+    sellerEmail.textContent =
+        seller.email || "";
+
+
+    sellerPhone.textContent =
+        seller.phone || "";
+
+
+    sellerAvatar.textContent =
+        (seller.firstName || "S")
+            .charAt(0)
+            .toUpperCase();
+}
+
+
+function startChatWithSeller() {
+
+    if (!currentProduct?.seller?._id) {
+
+        alert("Seller information unavailable.");
+
+        return;
+    }
+
+
+    const token =
+        localStorage.getItem("token");
+
+
+    if (!token) {
+
+        window.location.href =
+            "/login.html";
+
+        return;
+    }
+
+
+    const sellerId =
+        currentProduct.seller._id;
+
+
+    window.location.href =
+        `/chat.html?seller=${sellerId}`;
+}
+
+
+function formatPrice(price) {
+
+    return new Intl.NumberFormat(
+        "en-RW"
+    ).format(Number(price || 0));
+}
+
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+function showError() {
+
+    productLoading.classList.add("hidden");
+
+    productContent.classList.add("hidden");
+
+    sellerSection.classList.add("hidden");
+
+    productError.classList.remove("hidden");
+}
+
+
+loadProduct();

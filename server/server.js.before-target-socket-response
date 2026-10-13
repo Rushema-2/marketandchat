@@ -1,0 +1,488 @@
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const jwt = require("jsonwebtoken");
+const contactRoutes = require("./routes/contactRoutes");
+const connectDB = require("./config/db");
+const userRoutes = require("./routes/userRoutes");
+const authRoutes = require("./routes/authRoutes");
+const conversationRoutes = require("./routes/conversationRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+const path = require("path");
+const Message = require("./models/Message");
+const Conversation = require("./models/Conversation");
+
+dotenv.config();
+
+const app = express();
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin: "*"
+    }
+});
+
+connectDB();
+app.use(cors());
+app.use(express.json());
+
+app.use(
+    express.static(
+        path.join(__dirname, "../client")
+    )
+);
+
+app.get("/", (req, res) => {
+    res.send("RwhatsApp Server is running...");
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/contacts", contactRoutes);
+
+// ========================================
+// SOCKET.IO JWT AUTHENTICATION
+// ========================================
+
+io.use((socket, next) => {
+    try {
+        const token = socket.handshake.auth?.token;
+
+        if (!token) {
+            return next(
+                new Error("Authentication required")
+            );
+        }
+
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
+
+        socket.userId = decoded.userId;
+
+        next();
+
+    } catch (error) {
+        console.error(
+            "Socket authentication error:",
+            error.message
+        );
+
+        next(
+            new Error("Invalid or expired token")
+        );
+    }
+});
+
+
+// ========================================
+// SOCKET.IO CONNECTION
+// ========================================
+
+io.on("connection", (socket) => {
+
+    console.log(
+        "Authenticated user connected:",
+        socket.id,
+        "user:",
+        socket.userId
+    );
+
+
+    // ====================================
+    // JOIN CONVERSATION
+    // ====================================
+
+    socket.on(
+        "joinConversation",
+        async (conversationId) => {
+
+            try {
+
+                const conversation =
+                    await Conversation.findOne({
+                        _id: conversationId,
+                        participants: socket.userId
+                    });
+
+                if (!conversation) {
+
+                    socket.emit("messageError", {
+                        message:
+                            "Conversation not found"
+                    });
+
+                    return;
+                }
+
+                const room =
+                    `conversation:${conversationId}`;
+
+                socket.join(room);
+
+                console.log(
+                    `User ${socket.userId} joined ${room}`
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Join conversation error:",
+                    error
+                );
+
+                socket.emit("messageError", {
+                    message: "Server error"
+                });
+            }
+        }
+    );
+
+
+    // ====================================
+    // LEAVE CONVERSATION
+    // ====================================
+
+    socket.on(
+        "leaveConversation",
+        (conversationId) => {
+
+            const room =
+                `conversation:${conversationId}`;
+
+            socket.leave(room);
+
+            console.log(
+                `User ${socket.userId} left ${room}`
+            );
+        }
+    );
+
+
+    // ====================================
+    // SEND MESSAGE
+    // ====================================
+
+    socket.on(
+        "sendMessage",
+        async (data) => {
+
+            try {
+
+                const {
+                    conversationId,
+                    text
+                } = data;
+
+
+                console.log(
+                    "Message received from:",
+                    socket.userId,
+                    data
+                );
+
+
+                if (!conversationId || !text) {
+
+                    socket.emit("messageError", {
+                        message:
+                            "conversationId and text are required"
+                    });
+
+                    return;
+                }
+
+
+                // IMPORTANT:
+                // Sender comes from JWT,
+                // NOT from the client.
+
+                const senderId =
+                    socket.userId;
+
+
+                // Check conversation membership
+
+                const conversation =
+                    await Conversation.findOne({
+                        _id: conversationId,
+                        participants: senderId
+                    });
+
+
+                if (!conversation) {
+
+                    socket.emit("messageError", {
+                        message:
+                            "Conversation not found"
+                    });
+
+                    return;
+                }
+
+
+                // Save message
+
+                const message =
+                    await Message.create({
+                        conversation:
+                            conversationId,
+
+                        sender:
+                            senderId,
+
+                        text
+                    });
+
+
+                // Update last message
+
+                conversation.lastMessage =
+                    message._id;
+
+                await conversation.save();
+
+
+                // Populate sender
+
+                const populatedMessage =
+                    await Message.findById(
+                        message._id
+                    ).populate(
+                        "sender",
+                        "firstName lastName email"
+                    );
+
+
+                // Conversation room
+
+                const room =
+                    `conversation:${conversationId}`;
+
+
+                // Send to everyone in room
+
+                io.to(room).emit(
+                    "newMessage",
+                    populatedMessage
+                );
+
+
+            } catch (error) {
+
+                console.error(
+                    "Socket sendMessage error:",
+                    error
+                );
+
+                socket.emit("messageError", {
+                    message: "Server error"
+                });
+            }
+        }
+    );
+
+
+    // ====================================
+// CALL SIGNALING
+// ====================================
+
+socket.on("callOffer", async (data) => {
+    try {
+        const {
+            targetUserId,
+            conversationId,
+            callType,
+            offer
+        } = data;
+
+        if (
+            !targetUserId ||
+            !conversationId ||
+            !callType ||
+            !offer
+        ) {
+            socket.emit("callError", {
+                message: "Invalid call data"
+            });
+
+            return;
+        }
+
+        const conversation =
+            await Conversation.findOne({
+                _id: conversationId,
+                participants: socket.userId
+            });
+
+        if (!conversation) {
+            socket.emit("callError", {
+                message: "Conversation not found"
+            });
+
+            return;
+        }
+
+        // Find sockets belonging to target user
+        const targetSockets =
+            await io.fetchSockets();
+
+        const targetUserSockets =
+            targetSockets.filter(
+                targetSocket =>
+                    String(targetSocket.userId) ===
+                    String(targetUserId)
+            );
+
+        if (targetUserSockets.length === 0) {
+            socket.emit("callError", {
+                message: "User is offline"
+            });
+
+            return;
+        }
+
+        for (const targetSocket of targetUserSockets) {
+
+            targetSocket.emit(
+                "incomingCall",
+                {
+                    callId: socket.id,
+                    callerId: socket.userId,
+                    conversationId,
+                    callType,
+                    offer
+                }
+            );
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Call user error:",
+            error
+        );
+
+        socket.emit("callError", {
+            message: "Server error"
+        });
+    }
+});
+
+
+socket.on("acceptCall", (data) => {
+
+    const {
+        callerSocketId,
+        answer
+    } = data;
+
+    if (!callerSocketId || !answer) {
+        return;
+    }
+
+    io.to(callerSocketId).emit(
+        "callAccepted",
+        {
+            answer
+        }
+    );
+});
+
+
+socket.on("rejectCall", (data) => {
+
+    const {
+        callerSocketId
+    } = data;
+
+    if (!callerSocketId) {
+        return;
+    }
+
+    io.to(callerSocketId).emit(
+        "callRejected"
+    );
+});
+
+
+socket.on("iceCandidate", (data) => {
+
+    const {
+        targetSocketId,
+        candidate
+    } = data;
+
+    if (!targetSocketId || !candidate) {
+        return;
+    }
+
+    io.to(targetSocketId).emit(
+        "iceCandidate",
+        {
+            candidate
+        }
+    );
+});
+
+
+socket.on("endCall", (data) => {
+
+    const {
+        targetSocketId
+    } = data;
+
+    if (!targetSocketId) {
+        return;
+    }
+
+    io.to(targetSocketId).emit(
+        "callEnded"
+    );
+});
+
+
+    // ====================================
+    // DISCONNECT
+    // ====================================
+
+    socket.on(
+        "disconnect",
+        () => {
+
+            console.log(
+                "User disconnected:",
+                socket.id,
+                "user:",
+                socket.userId
+            );
+        }
+    );
+
+});
+
+
+// ========================================
+// START SERVER
+// ========================================
+
+const PORT =
+    process.env.PORT || 3000;
+
+server.listen(
+    PORT,
+    () => {
+
+        console.log(
+            `Server running on http://localhost:${PORT}`
+        );
+    }
+);
+                       

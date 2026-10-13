@@ -1,0 +1,1510 @@
+const token =
+    localStorage.getItem("token");
+
+const addProductButton =
+    document.getElementById("addProductButton");
+
+const emptyAddButton =
+    document.getElementById("emptyAddButton");
+
+const closeFormButton =
+    document.getElementById("closeFormButton");
+
+const addProductSection =
+    document.getElementById("addProductSection");
+
+const productForm =
+    document.getElementById("productForm");
+
+const productsContainer =
+    document.getElementById("productsContainer");
+
+const emptyState =
+    document.getElementById("emptyState");
+
+const productCount =
+    document.getElementById("productCount");
+
+const totalViews =
+    document.getElementById("totalViews");
+
+const totalLikes =
+    document.getElementById("totalLikes");
+
+const formMessage =
+    document.getElementById("formMessage");
+
+    const productImages =
+    document.getElementById("productImages");
+
+const imagePreview =
+    document.getElementById("imagePreview");
+
+    const productVideo =
+    document.getElementById("productVideo");
+
+const videoPreview =
+    document.getElementById("videoPreview");
+
+
+if (!token) {
+    window.location.href = "/login.html";
+}
+
+
+function openForm() {
+
+    addProductSection.classList.remove(
+        "hidden"
+    );
+
+    addProductSection.scrollIntoView({
+        behavior: "smooth"
+    });
+}
+
+
+function closeForm() {
+
+    addProductSection.classList.add(
+        "hidden"
+    );
+
+    productForm.reset();
+
+    formMessage.textContent = "";
+}
+
+
+addProductButton.addEventListener(
+    "click",
+    openForm
+);
+
+
+emptyAddButton.addEventListener(
+    "click",
+    openForm
+);
+
+
+closeFormButton.addEventListener(
+    "click",
+    closeForm
+);
+
+
+async function loadMyProducts() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/products/seller/me/products",
+                {
+                    headers: {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ||
+                "Failed to load products"
+            );
+        }
+
+        renderProducts(data.products);
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
+        productsContainer.innerHTML =
+            `<p>Could not load your products.</p>`;
+    }
+}
+
+function getPromotionStatus(product) {
+
+    if (
+        product.promotionEnd &&
+        new Date(product.promotionEnd) <= new Date()
+    ) {
+        return `
+            <div class="promotion-status promotion-expired">
+                Promotion: Expired
+            </div>
+        `;
+    }
+
+    if (!product.isPromoted) {
+        return `
+            <div class="promotion-status promotion-not-active">
+                Promotion: Not active
+            </div>
+        `;
+    }
+
+    const packageName =
+        product.promotionPackage
+            ? product.promotionPackage.replace("_", " ")
+            : "";
+
+    if (product.promotionEnd) {
+
+        const endDate =
+            new Date(product.promotionEnd)
+                .toLocaleDateString();
+
+        return `
+            <div class="promotion-status promotion-active">
+                🚀 Promotion: Active
+                ${
+                    packageName
+                        ? `(${packageName})`
+                        : ""
+                }
+                · Ends ${endDate}
+            </div>
+        `;
+    }
+
+    return `
+        <div class="promotion-status promotion-active">
+            🚀 Promotion: Active
+        </div>
+    `;
+}
+
+function renderProducts(products) {
+
+    productsContainer.innerHTML = "";
+
+    const list =
+        Array.isArray(products)
+            ? products
+            : [];
+
+    productCount.textContent =
+        list.length;
+
+    totalViews.textContent =
+        list.reduce(
+            (sum, product) =>
+                sum + Number(product.views || 0),
+            0
+        );
+
+    totalLikes.textContent =
+        list.reduce(
+            (sum, product) =>
+                sum + Number(product.likes || 0),
+            0
+        );
+
+        const promotedProductCount =
+    document.getElementById("promotedProductCount");
+
+if (promotedProductCount) {
+    promotedProductCount.textContent =
+        list.filter(
+            product =>
+                product.isPromoted &&
+                product.promotionEnd &&
+                new Date(product.promotionEnd) > new Date()
+        ).length;
+}
+
+
+    if (list.length === 0) {
+
+        emptyState.classList.remove(
+            "hidden"
+        );
+
+        return;
+    }
+
+
+    emptyState.classList.add(
+        "hidden"
+    );
+
+
+    list.forEach(product => {
+
+        const card =
+            document.createElement("article");
+
+        card.className =
+            "product-card";
+
+
+        card.innerHTML = `
+            <div class="product-placeholder">
+    ${
+        product.images?.length
+            ? `
+                <img
+                    src="${escapeHtml(product.images[0])}"
+                    alt="${escapeHtml(product.title)}"
+                >
+            `
+            : "No image"
+    }
+</div>
+
+            <div class="product-info">
+
+                <h3>
+                    ${escapeHtml(product.title)}
+                </h3>
+
+                <div class="product-price">
+                    ${formatPrice(product.price)}
+                    ${escapeHtml(product.currency || "RWF")}
+                </div>
+
+                <div class="product-meta">
+                    ${escapeHtml(product.category)}
+                </div>
+
+                <div class="product-meta">
+                    Views: ${product.views || 0}
+                    · Likes: ${product.likes || 0}
+                </div>
+
+               <div class="product-meta">
+    Status: ${escapeHtml(product.status || "active")}
+</div>
+
+<div class="product-promotion-status">
+    ${getPromotionStatus(product)}
+</div>
+
+                <div class="product-actions">
+
+                    <button
+    class="small-button view-button"
+    data-id="${product._id}"
+>
+    View
+</button>
+
+<button
+    class="small-button promote-button"
+    data-id="${product._id}"
+>
+    ${
+        product.promotionEnd &&
+        new Date(product.promotionEnd) <= new Date()
+            ? "🔄 Promote Again"
+            : product.isPromoted &&
+              product.promotionEnd &&
+              new Date(product.promotionEnd) > new Date()
+                ? "🚀 Promotion Active"
+                : "🚀 Promote"
+    }
+</button>
+<button
+    class="small-button delete-button"
+    data-id="${product._id}"
+>
+    Delete
+</button>
+
+                </div>
+
+            </div>
+        `;
+
+
+        card
+            .querySelector(".view-button")
+            .addEventListener(
+                "click",
+                () => {
+
+                    window.location.href =
+                        `/product.html?id=${product._id}`;
+                }
+            );
+
+            card
+    .querySelector(".promote-button")
+    .addEventListener(
+        "click",
+        () => openPromotionModal(product)
+    );
+
+
+        card
+            .querySelector(".delete-button")
+            .addEventListener(
+                "click",
+                () => deleteProduct(product._id)
+            );
+
+
+        productsContainer.appendChild(card);
+    });
+}
+
+
+async function deleteProduct(productId) {
+
+    const confirmed =
+        confirm(
+            "Are you sure you want to delete this product?"
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/products/${productId}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message ||
+                "Could not delete product"
+            );
+        }
+
+
+        await loadMyProducts();
+
+    } catch (error) {
+
+        console.error(
+            "Delete error:",
+            error
+        );
+
+        alert(error.message);
+    }
+}
+
+let selectedPromotionProduct = null;
+let selectedPromotionId = null;
+
+
+function openPromotionModal(product) {
+
+    const modal =
+        document.getElementById("promotionModal");
+
+    const title =
+        document.getElementById("promotionProductTitle");
+
+    const message =
+        document.getElementById("promotionMessage");
+
+    const paymentActions =
+        document.getElementById(
+            "promotionPaymentActions"
+        );
+
+    const paymentStatus =
+        document.getElementById(
+            "promotionPaymentStatus"
+        );
+
+    if (!modal) {
+        return;
+    }
+
+    selectedPromotionProduct = product;
+    selectedPromotionId = null;
+
+    title.textContent =
+        `Promote: ${product.title}`;
+
+    message.textContent = "";
+
+    if (paymentActions) {
+        paymentActions.classList.add("hidden");
+    }
+
+    if (paymentStatus) {
+        paymentStatus.textContent = "";
+    }
+
+    modal.classList.remove("hidden");
+}
+
+
+function closePromotionModal() {
+
+    const modal =
+        document.getElementById("promotionModal");
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("hidden");
+
+    selectedPromotionProduct = null;
+    selectedPromotionId = null;
+}
+
+
+const closePromotionButton =
+    document.getElementById(
+        "closePromotionModal"
+    );
+
+if (closePromotionButton) {
+
+    closePromotionButton.addEventListener(
+        "click",
+        closePromotionModal
+    );
+}
+
+
+document
+    .querySelectorAll(".promotion-plan")
+    .forEach(button => {
+
+        button.addEventListener(
+            "click",
+            async () => {
+
+                if (!selectedPromotionProduct) {
+                    return;
+                }
+
+                const packageName =
+                    button.dataset.package;
+
+                const token =
+                    localStorage.getItem("token");
+
+                if (!token) {
+                    window.location.href =
+                        "/login.html";
+                    return;
+                }
+
+                const message =
+                    document.getElementById(
+                        "promotionMessage"
+                    );
+
+                const paymentActions =
+                    document.getElementById(
+                        "promotionPaymentActions"
+                    );
+
+                const paymentStatus =
+                    document.getElementById(
+                        "promotionPaymentStatus"
+                    );
+
+                message.textContent =
+                    "Creating promotion request...";
+
+                if (paymentActions) {
+                    paymentActions.classList.add(
+                        "hidden"
+                    );
+                }
+
+                if (paymentStatus) {
+                    paymentStatus.textContent = "";
+                }
+
+                try {
+
+                    const response =
+                        await fetch(
+                            "/api/promotions",
+                            {
+                                method: "POST",
+
+                                headers: {
+                                    "Content-Type":
+                                        "application/json",
+
+                                    "Authorization":
+                                        `Bearer ${token}`
+                                },
+
+                                body: JSON.stringify({
+                                    productId:
+                                        selectedPromotionProduct._id,
+
+                                    package:
+                                        packageName
+                                })
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(
+                            data.message ||
+                            "Failed to create promotion"
+                        );
+                    }
+
+                    selectedPromotionId =
+                        data.promotion.id;
+
+                    message.textContent =
+                        `Promotion created: ${data.promotion.amount} ${data.promotion.currency}`;
+
+                    if (paymentActions) {
+                        paymentActions.classList.remove(
+                            "hidden"
+                        );
+                    }
+
+                    console.log(
+                        "PROMOTION CREATED:",
+                        data
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Promotion error:",
+                        error
+                    );
+
+                    message.textContent =
+                        error.message ||
+                        "Could not create promotion";
+                }
+            }
+        );
+
+    });
+
+
+const payPromotionButton =
+    document.getElementById(
+        "payPromotionButton"
+    );
+
+if (payPromotionButton) {
+
+    payPromotionButton.addEventListener(
+        "click",
+        async () => {
+
+            if (!selectedPromotionId) {
+                return;
+            }
+
+            const token =
+                localStorage.getItem("token");
+
+            if (!token) {
+                window.location.href =
+                    "/login.html";
+                return;
+            }
+
+            const paymentStatus =
+                document.getElementById(
+                    "promotionPaymentStatus"
+                );
+
+            paymentStatus.textContent =
+                "Sending payment request to MTN MoMo...";
+
+            try {
+
+                const response =
+                    await fetch(
+                        `/api/promotions/${selectedPromotionId}/pay`,
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Authorization":
+                                    `Bearer ${token}`
+                            }
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                        "Payment request failed"
+                    );
+                }
+
+                paymentStatus.textContent =
+                    "MTN MoMo payment request sent. Check your phone and approve the payment.";
+
+                console.log(
+                    "PAYMENT REQUEST:",
+                    data
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Payment error:",
+                    error
+                );
+
+                paymentStatus.textContent =
+                    error.message ||
+                    "Could not start payment";
+            }
+        }
+    );
+
+}
+
+
+const checkPromotionPaymentButton =
+    document.getElementById(
+        "checkPromotionPaymentButton"
+    );
+
+if (checkPromotionPaymentButton) {
+
+    checkPromotionPaymentButton.addEventListener(
+        "click",
+        async () => {
+
+            if (!selectedPromotionId) {
+                return;
+            }
+
+            const token =
+                localStorage.getItem("token");
+
+            if (!token) {
+                window.location.href =
+                    "/login.html";
+                return;
+            }
+
+            const paymentStatus =
+                document.getElementById(
+                    "promotionPaymentStatus"
+                );
+
+            paymentStatus.textContent =
+                "Checking MTN MoMo payment status...";
+
+            try {
+
+                const response =
+                    await fetch(
+                        `/api/promotions/${selectedPromotionId}/payment-status`,
+                        {
+                            method: "GET",
+
+                            headers: {
+                                "Authorization":
+                                    `Bearer ${token}`
+                            }
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                        "Could not check payment status"
+                    );
+                }
+
+                const payment =
+                    data.payment;
+
+                if (
+                    payment.momoStatus ===
+                    "SUCCESSFUL"
+                ) {
+
+                    paymentStatus.textContent =
+                        "Payment successful! Your product promotion is now active.";
+
+                    console.log(
+                        "PROMOTION ACTIVATED:",
+                        data
+                    );
+
+                    return;
+                }
+
+                if (
+                    payment.momoStatus ===
+                    "FAILED"
+                ) {
+
+                    paymentStatus.textContent =
+                        "Payment failed. Please try again.";
+
+                    return;
+                }
+
+                paymentStatus.textContent =
+                    `Payment status: ${payment.momoStatus || "PENDING"}. Please approve the payment on your phone and check again.`;
+
+            } catch (error) {
+
+                console.error(
+                    "Payment status error:",
+                    error
+                );
+
+                paymentStatus.textContent =
+                    error.message ||
+                    "Could not check payment status";
+            }
+        }
+    );
+
+}
+
+productForm.addEventListener(
+    "submit",
+    async event => {
+
+        event.preventDefault();
+
+        try {
+
+            formMessage.textContent =
+                "Uploading images...";
+
+
+            const files =
+                Array.from(productImages.files);
+
+                const videoFile =
+    productVideo.files[0];
+
+
+            if (files.length > 10) {
+
+                throw new Error(
+                    "You can select up to 10 images."
+                );
+            }
+
+
+            const imageUrls = [];
+
+            let videoUrl = null;
+
+
+            if (
+    files.length > 0 ||
+    videoFile
+) {
+
+    const uploadData =
+        new FormData();
+
+
+    files.forEach(file => {
+
+        uploadData.append(
+            "files",
+            file
+        );
+
+    });
+
+
+    if (videoFile) {
+
+        uploadData.append(
+            "files",
+            videoFile
+        );
+    }
+
+
+    const uploadResponse =
+        await fetch(
+            "/api/uploads",
+            {
+                method: "POST",
+
+                headers: {
+                    "Authorization":
+                        "Bearer " + token
+                },
+
+                body: uploadData
+            }
+        );
+
+
+    const uploadResult =
+        await uploadResponse.json();
+
+
+    if (!uploadResponse.ok) {
+
+        throw new Error(
+            uploadResult.message ||
+            "File upload failed"
+        );
+    }
+
+
+    uploadResult.files.forEach(
+        file => {
+
+            if (
+                file.mimetype.startsWith(
+                    "image/"
+                )
+            ) {
+
+                imageUrls.push(
+                    file.url
+                );
+
+            } else if (
+                file.mimetype.startsWith(
+                    "video/"
+                )
+            ) {
+
+                videoUrl =
+                    file.url;
+            }
+
+        }
+    );
+}
+
+            formMessage.textContent =
+                "Creating product...";
+
+
+            const formData =
+                new FormData(productForm);
+
+
+            const product = {
+
+                title:
+                    formData
+                        .get("title")
+                        .trim(),
+
+                description:
+                    formData
+                        .get("description")
+                        .trim(),
+
+                price:
+                    Number(
+                        formData.get("price")
+                    ),
+
+                currency:
+                    formData.get("currency"),
+
+                category:
+                    formData.get("category"),
+
+                location:
+                    formData
+                        .get("location")
+                        .trim(),
+
+                condition:
+                    formData.get("condition"),
+
+                stock:
+                    Number(
+                        formData.get("stock")
+                    ),
+
+                images:
+                    imageUrls,
+
+                    video:
+                        videoUrl
+
+                   
+            };
+
+
+            const response =
+                await fetch(
+                    "/api/products",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+
+                            "Authorization":
+                                "Bearer " + token
+                        },
+
+                        body:
+                            JSON.stringify(product)
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.message ||
+                    "Could not create product"
+                );
+            }
+
+
+            formMessage.textContent =
+                "Product published successfully.";
+
+
+            productForm.reset();
+
+            imagePreview.innerHTML = "";
+            videoPreview.innerHTML = "";
+
+
+            await loadMyProducts();
+
+
+        } catch (error) {
+
+            console.error(
+                "Create product error:",
+                error
+            );
+
+
+            formMessage.textContent =
+                error.message;
+        }
+    }
+);
+
+productImages.addEventListener(
+    "change",
+    () => {
+
+        imagePreview.innerHTML = "";
+
+        const files =
+            Array.from(productImages.files);
+
+        if (files.length > 10) {
+
+            formMessage.textContent =
+                "You can select up to 10 images.";
+
+            productImages.value = "";
+
+            return;
+        }
+
+        formMessage.textContent = "";
+
+        files.forEach(file => {
+
+            if (!file.type.startsWith("image/")) {
+                return;
+            }
+
+            const reader =
+                new FileReader();
+
+            reader.onload = (event) => {
+
+                const image =
+                    document.createElement("img");
+
+                image.src =
+                    event.target.result;
+
+                image.alt =
+                    file.name;
+
+                imagePreview.appendChild(image);
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+);
+
+async function loadSalesSummary() {
+    try {
+        const response = await fetch(
+            "/api/orders/sales-summary",
+            {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to load sales summary"
+            );
+        }
+
+        const summary = data.summary || {};
+
+        const totalSalesElement =
+            document.getElementById("totalSales");
+
+        const totalCommissionElement =
+            document.getElementById("totalCommission");
+
+        const totalEarningsElement =
+            document.getElementById("totalEarnings");
+
+        const totalOrdersElement =
+            document.getElementById("totalOrders");
+
+        if (totalSalesElement) {
+            totalSalesElement.textContent =
+                `${formatPrice(summary.totalSales || 0)} RWF`;
+        }
+
+        if (totalCommissionElement) {
+            totalCommissionElement.textContent =
+                `${formatPrice(summary.totalCommission || 0)} RWF`;
+        }
+
+        if (totalEarningsElement) {
+            totalEarningsElement.textContent =
+                `${formatPrice(summary.totalEarnings || 0)} RWF`;
+        }
+
+        if (totalOrdersElement) {
+            totalOrdersElement.textContent =
+                Number(summary.totalOrders || 0);
+        }
+
+    } catch (error) {
+        console.error(
+            "Sales summary error:",
+            error
+        );
+    }
+}
+
+
+async function updateSalesOrderStatus(orderId, nextStatus) {
+    try {
+        const response = await fetch(
+            `/api/orders/${orderId}/status`,
+            {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify({
+                    status: nextStatus
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ||
+                "Failed to update order status"
+            );
+        }
+
+        await loadSalesOrders();
+        await loadSalesSummary();
+
+    } catch (error) {
+        console.error(
+            "Update sales order status error:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Failed to update order status"
+        );
+    }
+}
+
+
+function setupSalesOrderActions() {
+    const container =
+        document.getElementById("salesOrdersContainer");
+
+    if (!container) {
+        return;
+    }
+
+    container.addEventListener("click", async (event) => {
+
+        const button =
+            event.target.closest(
+                ".sales-order-action-button"
+            );
+
+        if (!button) {
+            return;
+        }
+
+        const orderId =
+            button.dataset.orderId;
+
+        const nextStatus =
+            button.dataset.nextStatus;
+
+        if (!orderId || !nextStatus) {
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "Updating...";
+
+        await updateSalesOrderStatus(
+            orderId,
+            nextStatus
+        );
+    });
+}
+
+async function loadSalesOrders() {
+    try {
+        const response = await fetch(
+            "/api/orders/my-sales",
+            {
+                headers: {
+                    "Authorization": "Bearer " + token
+                }
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message || "Failed to load sales orders"
+            );
+        }
+
+        const container =
+            document.getElementById(
+                "salesOrdersContainer"
+            );
+
+        const emptyState =
+            document.getElementById(
+                "salesOrdersEmpty"
+            );
+
+        if (!container) {
+            return;
+        }
+
+        const orders = Array.isArray(data.orders)
+            ? data.orders
+            : [];
+
+        if (orders.length === 0) {
+            if (emptyState) {
+                emptyState.classList.remove("hidden");
+            }
+
+            return;
+        }
+
+        if (emptyState) {
+            emptyState.classList.add("hidden");
+        }
+
+        const ordersHtml = orders.map(order => {
+
+            const product =
+                order.product || {};
+
+            const buyer =
+                order.buyer || {};
+
+            const buyerName =
+                `${buyer.firstName || ""} ${buyer.lastName || ""}`.trim()
+                || "Unknown buyer";
+
+            const productTitle =
+                product.title || "Unknown product";
+
+            const currency =
+                order.currency || "RWF";
+
+            const orderDate =
+                order.createdAt
+                    ? new Date(
+                        order.createdAt
+                    ).toLocaleDateString()
+                    : "-";
+
+            return `
+                <div class="sales-order-card">
+
+                    <div class="sales-order-main">
+
+                        <h3>
+                            ${escapeHtml(productTitle)}
+                        </h3>
+
+                        <p>
+                            Buyer:
+                            <strong>
+                                ${escapeHtml(buyerName)}
+                            </strong>
+                        </p>
+
+                        <p>
+                            Quantity:
+                            <strong>
+                                ${Number(order.quantity || 0)}
+                            </strong>
+                        </p>
+
+                        <p>
+                            Date:
+                            <strong>
+                                ${escapeHtml(orderDate)}
+                            </strong>
+                        </p>
+
+                    </div>
+
+                    <div class="sales-order-financial">
+
+                        <p>
+                            Total:
+                            <strong>
+                                ${formatPrice(
+                                    order.totalAmount || 0
+                                )} ${escapeHtml(currency)}
+                            </strong>
+                        </p>
+
+                        <p>
+                            Commission:
+                            <strong>
+                                ${formatPrice(
+                                    order.commissionAmount || 0
+                                )} ${escapeHtml(currency)}
+                            </strong>
+                        </p>
+
+                        <p>
+                            Your Earnings:
+                            <strong>
+                                ${formatPrice(
+                                    order.sellerAmount || 0
+                                )} ${escapeHtml(currency)}
+                            </strong>
+                        </p>
+
+                    </div>
+
+                    <div class="sales-order-status">
+
+                        <span>
+                            Payment:
+                            ${escapeHtml(
+                                order.paymentStatus || "pending"
+                            )}
+                        </span>
+
+                        <span>
+                            Order:
+                            ${escapeHtml(
+                                order.status || "pending"
+                            )}
+                        </span>
+
+                        ${
+                            order.status === "paid"
+                                ? `
+                                    <button
+                                        type="button"
+                                        class="sales-order-action-button"
+                                        data-order-id="${escapeHtml(order._id)}"
+                                        data-next-status="processing"
+                                    >
+                                        Start Processing
+                                    </button>
+                                `
+                                : order.status === "processing"
+                                    ? `
+                                        <button
+                                            type="button"
+                                            class="sales-order-action-button"
+                                            data-order-id="${escapeHtml(order._id)}"
+                                            data-next-status="shipped"
+                                        >
+                                            Mark as Shipped
+                                        </button>
+                                    `
+                                    : order.status === "shipped"
+                                        ? `
+                                            <span class="sales-order-completed">
+                                                Awaiting Buyer Confirmation
+                                            </span>
+                                        `
+                                        : ["delivered", "completed"].includes(order.status)
+                                            ? `
+                                                <span class="sales-order-completed">
+                                                    ✓ ${order.status === "delivered" ? "Delivered" : "Completed"}
+                                                </span>
+                                            `
+                                            : ""
+                        }
+
+                    </div>
+
+                </div>
+            `;
+        }).join("");
+
+        container.innerHTML = ordersHtml;
+
+    } catch (error) {
+        console.error(
+            "Sales orders error:",
+            error
+        );
+    }
+}
+
+
+function formatPrice(price) {
+
+    return new Intl.NumberFormat(
+        "en-RW"
+    ).format(Number(price || 0));
+}
+
+productVideo.addEventListener(
+    "change",
+    () => {
+
+        videoPreview.innerHTML = "";
+
+        const file =
+            productVideo.files[0];
+
+        if (!file) {
+            return;
+        }
+
+
+        if (!file.type.startsWith("video/")) {
+
+            formMessage.textContent =
+                "Please select a video file.";
+
+            productVideo.value = "";
+
+            return;
+        }
+
+
+        if (file.size > 100 * 1024 * 1024) {
+
+            formMessage.textContent =
+                "Video must be smaller than 100 MB.";
+
+            productVideo.value = "";
+
+            return;
+        }
+
+
+        formMessage.textContent = "";
+
+
+        const video =
+            document.createElement("video");
+
+        video.controls = true;
+
+        video.preload = "metadata";
+
+        video.src =
+            URL.createObjectURL(file);
+
+        videoPreview.appendChild(video);
+    }
+);
+
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+loadMyProducts();
+loadSalesSummary();
+loadSalesOrders();
+setupSalesOrderActions();

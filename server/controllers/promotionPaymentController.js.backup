@@ -1,0 +1,80 @@
+const Promotion = require("../models/Promotion");
+const User = require("../models/User");
+
+const initiatePromotionPayment = async (req, res) => {
+    try {
+        const { promotionId } = req.params;
+
+        if (!promotionId) {
+            return res.status(400).json({
+                message: "Promotion ID is required"
+            });
+        }
+
+        const promotion = await Promotion.findById(promotionId);
+
+        if (!promotion) {
+            return res.status(404).json({
+                message: "Promotion not found"
+            });
+        }
+
+        if (
+            String(promotion.seller) !==
+            String(req.user.userId)
+        ) {
+            return res.status(403).json({
+                message:
+                    "You can only pay for your own promotion"
+            });
+        }
+
+        if (promotion.status !== "pending") {
+            return res.status(400).json({
+                message:
+                    "Only pending promotions can be paid"
+            });
+        }
+
+        const user = await User.findById(req.user.userId)
+            .select("phone");
+
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        if (!user.phone) {
+            return res.status(400).json({
+                message:
+                    "A phone number is required for payment"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Payment is ready to be initiated",
+            payment: {
+                promotionId: promotion._id,
+                amount: promotion.amount,
+                currency: promotion.currency,
+                payerPhone: user.phone,
+                paymentProvider: "mtn_momo"
+            }
+        });
+
+    } catch (error) {
+        console.error(
+            "Initiate promotion payment error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Server error"
+        });
+    }
+};
+
+module.exports = {
+    initiatePromotionPayment
+};

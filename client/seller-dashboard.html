@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Seller Dashboard | RwhatsApp Marketplace</title>
+
+    <link rel="stylesheet" href="/css/seller-dashboard.css">
+</head>
+
+<body>
+
+<header class="dashboard-header">
+
+    <div class="brand">
+        <span class="brand-icon">R</span>
+        <span>Seller Dashboard</span>
+    </div>
+
+    <nav>
+        <a href="/marketplace.html">Marketplace</a>
+        <a href="/chat.html">Chat</a>
+    </nav>
+
+</header>
+
+
+<main class="dashboard">
+
+    <section class="dashboard-top">
+
+        <div>
+            <h1>My Marketplace</h1>
+            <p>Manage your products and start selling.</p>
+        </div>
+
+        <button id="addProductButton" class="primary-button">
+            + Add Product
+        </button>
+
+    </section>
+
+
+    <section class="stats">
+
+    <div class="stat-card">
+        <span>My Products</span>
+        <strong id="productCount">0</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>Total Views</span>
+        <strong id="totalViews">0</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>Total Likes</span>
+        <strong id="totalLikes">0</strong>
+    </div>
+
+    <div class="stat-card">
+        <span>Promoted Products</span>
+        <strong id="promotedProductCount">0</strong>
+    </div>
+
+</section>
+
+<section class="sales-summary-section">
+
+    <div class="section-header">
+
+        <div>
+            <h2>Sales Overview</h2>
+            <p>Your marketplace sales and earnings.</p>
+        </div>
+
+    </div>
+
+    <div class="sales-summary-grid">
+
+        <div class="stat-card">
+            <span>Total Sales</span>
+            <strong id="totalSales">0 RWF</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Commission</span>
+            <strong id="totalCommission">0 RWF</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Your Earnings</span>
+            <strong id="totalEarnings">0 RWF</strong>
+        </div>
+
+        <div class="stat-card">
+            <span>Paid Orders</span>
+            <strong id="totalOrders">0</strong>
+        </div>
+
+    </div>
+
+</section>
+
+<section class="sales-orders-section">
+
+    <div class="section-header">
+
+        <div>
+            <h2>Sales Orders</h2>
+            <p>Orders from customers who bought your products.</p>
+        </div>
+
+    </div>
+
+    <div id="salesOrdersContainer" class="sales-orders-container">
+
+        <div id="salesOrdersEmpty" class="empty-state">
+            <h3>No sales yet</h3>
+            <p>Your completed customer orders will appear here.</p>
+        </div>
+
+    </div>
+
+</section>
+
+    <section id="addProductSection" class="form-section hidden">
+
+        <div class="section-header">
+
+            <div>
+                <h2>Add Product</h2>
+                <p>Create a product listing.</p>
+            </div>
+
+            <button
+                id="closeFormButton"
+                class="close-button"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <form id="productForm">
+
+            <div class="form-grid">
+
+                <div class="form-group">
+                    <label for="title">
+                        Product title
+                    </label>
+
+                    <input
+                        id="title"
+                        name="title"
+                        type="text"
+                        maxlength="150"
+                        required
+                    >
+                </div>
+
+
+                <div class="form-group">
+                    <label for="category">
+                        Category
+                    </label>
+
+                    <select
+                        id="category"
+                        name="category"
+                        required
+                    >
+                        <option value="">
+                            Select category
+                        </option>
+
+                        <option value="electronics">
+                            Electronics
+                        </option>
+
+                        <option value="fashion">
+                            Fashion
+                        </option>
+
+                        <option value="vehicles">
+                            Vehicles
+                        </option>
+
+                        <option value="property">
+                            Property
+                        </option>
+
+                        <option value="services">
+                            Services
+                        </option>
+
+                        <option value="other">
+                            Other
+                        </option>
+                    </select>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="price">
+                        Price
+                    </label>
+
+                    <input
+                        id="price"
+                        name="price"
+                        type="number"
+                        min="0"
+                        required
+                    >
+                </div>
+
+
+                <div class="form-group">
+                    <label for="currency">
+                        Currency
+                    </label>
+
+                    <select id="currency" name="currency">
+                        <option value="RWF">RWF</option>
+                        <option value="USD">USD</option>
+                        <option value="KES">KES</option>
+                        <option value="UGX">UGX</option>
+                    </select>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="condition">
+                        Condition
+                    </label>
+
+                    <select
+                        id="condition"
+                        name="condition"
+                    >
+                        <option value="new">New</option>
+                        <option value="used">Used</option>
+                        <option value="refurbished">
+                            Refurbished
+                        </option>
+                    </select>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="stock">
+                        Stock
+                    </label>
+
+                    <input
+                        id="stock"
+                        name="stock"
+                        type="number"
+                        min="0"
+                        value="1"
+                        required
+                    >
+                </div>
+
+
+                <div class="form-group full">
+                    <label for="location">
+                        Location
+                    </label>
+
+                    <input
+                        id="location"
+                        name="location"
+                        type="text"
+                        placeholder="Kigali"
+                    >
+                </div>
+
+                <div class="form-group full">
+
+    <label for="productVideo">
+        Product Video
+    </label>
+
+    <input
+        id="productVideo"
+        name="productVideo"
+        type="file"
+        accept="video/*"
+    >
+
+    <small>
+        Optional. Maximum video size: 100 MB.
+    </small>
+
+    <div
+        id="videoPreview"
+        class="video-preview"
+    ></div>
+
+</div>
+
+
+                <div class="form-group full">
+
+                    <label for="description">
+                        Description
+                    </label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="6"
+                        maxlength="5000"
+                        required
+                    ></textarea>
+
+                </div>
+                <div class="form-group full">
+
+                    <label for="productImages">
+                        Product Images
+                    </label>
+
+                    <input
+                        id="productImages"
+                        name="productImages"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                    >
+
+                    <small>
+                        You can select up to 10 images.
+                    </small>
+
+                    <div
+                        id="imagePreview"
+                        class="image-preview"
+                    ></div>
+
+                </div>
+            </div>
+
+
+            <div id="formMessage" class="form-message">
+            </div>
+
+
+            <button
+                type="submit"
+                class="primary-button submit-button"
+            >
+                Publish Product
+            </button>
+
+        </form>
+
+    </section>
+
+
+    <section class="products-section">
+
+        <div class="section-header">
+
+            <div>
+                <h2>My Products</h2>
+                <p>Your current listings.</p>
+            </div>
+
+        </div>
+
+
+        <div
+            id="productsContainer"
+            class="products-grid"
+        >
+        </div>
+
+
+        <div
+            id="emptyState"
+            class="empty-state hidden"
+        >
+            <h3>No products yet</h3>
+            <p>Add your first product to start selling.</p>
+
+            <button
+                id="emptyAddButton"
+                class="primary-button"
+            >
+                + Add Product
+            </button>
+        </div>
+
+    </section>
+
+</main>
+
+
+<div
+    id="promotionModal"
+    class="promotion-modal hidden"
+>
+    <div class="promotion-modal-content">
+
+        <button
+            type="button"
+            id="closePromotionModal"
+            class="promotion-close"
+        >
+            ×
+        </button>
+
+        <h2>🚀 Promote Your Product</h2>
+
+        <p id="promotionProductTitle">
+            Choose a promotion package.
+        </p>
+
+        <div class="promotion-plans">
+
+            <button
+                type="button"
+                class="promotion-plan"
+                data-package="1_day"
+            >
+                <strong>1 Day</strong>
+                <span>1,000 RWF</span>
+            </button>
+
+            <button
+                type="button"
+                class="promotion-plan"
+                data-package="7_days"
+            >
+                <strong>7 Days</strong>
+                <span>5,000 RWF</span>
+            </button>
+
+            <button
+                type="button"
+                class="promotion-plan"
+                data-package="30_days"
+            >
+                <strong>30 Days</strong>
+                <span>15,000 RWF</span>
+            </button>
+
+        </div>
+
+        <div
+            id="promotionMessage"
+            class="promotion-message"
+        ></div>
+
+        <div
+            id="promotionPaymentActions"
+            class="promotion-payment-actions hidden"
+        >
+            <button
+                type="button"
+                id="payPromotionButton"
+                class="primary-button"
+            >
+                Pay with MTN MoMo
+            </button>
+
+            <button
+                type="button"
+                id="checkPromotionPaymentButton"
+                class="secondary-button"
+            >
+                Check Payment Status
+            </button>
+        </div>
+
+        <div
+            id="promotionPaymentStatus"
+            class="promotion-payment-status"
+        ></div>
+
+    </div>
+</div>
+
+<script src="/js/seller-dashboard.js?v=3"></script>
+
+</body>
+</html>

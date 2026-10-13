@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Marketplace | RwhatsApp</title>
+
+    <link rel="stylesheet" href="/css/marketplace.css">
+</head>
+
+<body>
+
+<header class="market-header">
+
+    <div class="brand">
+        <span class="brand-icon">R</span>
+        <span>RwhatsApp Marketplace</span>
+    </div>
+
+    <nav>
+        <a href="/marketplace.html">Marketplace</a>
+        <a href="/chat.html">Chat</a>
+
+        <a href="/notifications.html" class="notification-link">
+            🔔
+            <span id="notificationBadge" class="notification-badge hidden">0</span>
+        </a>
+
+        <button id="sellButton">+ Sell Product</button>
+    </nav>
+
+</header>
+
+
+<main>
+
+    <section class="hero">
+
+        <div>
+            <h1>Find what you need.</h1>
+            <p>
+                Buy, sell, promote and connect with people directly.
+            </p>
+        </div>
+
+        <div class="search-box">
+            <input
+                id="searchInput"
+                type="search"
+                placeholder="Search products..."
+            >
+
+            <button id="searchButton">
+                Search
+            </button>
+        </div>
+
+    </section>
+
+
+    <section class="categories">
+
+        <button class="category active" data-category="">
+            All
+        </button>
+
+        <button class="category" data-category="electronics">
+            Electronics
+        </button>
+
+        <button class="category" data-category="fashion">
+            Fashion
+        </button>
+
+        <button class="category" data-category="vehicles">
+            Vehicles
+        </button>
+
+        <button class="category" data-category="property">
+            Property
+        </button>
+
+        <button class="category" data-category="services">
+            Services
+        </button>
+
+        <button class="category" data-category="other">
+            Other
+        </button>
+
+    </section>
+
+
+    <section class="marketplace-section">
+
+        <div class="section-title">
+            <div>
+                <h2>Latest products</h2>
+                <p id="resultInfo">Loading products...</p>
+            </div>
+        </div>
+
+        <div id="productsContainer" class="products-grid">
+        </div>
+
+        <div id="loading" class="state">
+            Loading products...
+        </div>
+
+        <div id="emptyState" class="state hidden">
+            No products found.
+        </div>
+
+        <div id="pagination" class="pagination">
+        </div>
+
+    </section>
+
+</main>
+
+
+<script src="/js/marketplace.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,32 @@
+const express = require("express");
+
+const {
+    createOrder,
+    payOrder,
+    checkOrderPayment
+} = require("../controllers/orderController");
+
+const authMiddleware =
+    require("../middleware/authMiddleware");
+
+const router = express.Router();
+
+router.post(
+    "/",
+    authMiddleware,
+    createOrder
+);
+
+router.post(
+    "/:orderId/pay",
+    authMiddleware,
+    payOrder
+);
+
+router.get(
+    "/:orderId/payment-status",
+    authMiddleware,
+    checkOrderPayment
+);
+
+module.exports = router;

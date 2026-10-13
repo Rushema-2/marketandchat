@@ -1,0 +1,573 @@
+const token =
+    localStorage.getItem("token");
+
+const addProductButton =
+    document.getElementById("addProductButton");
+
+const emptyAddButton =
+    document.getElementById("emptyAddButton");
+
+const closeFormButton =
+    document.getElementById("closeFormButton");
+
+const addProductSection =
+    document.getElementById("addProductSection");
+
+const productForm =
+    document.getElementById("productForm");
+
+const productsContainer =
+    document.getElementById("productsContainer");
+
+const emptyState =
+    document.getElementById("emptyState");
+
+const productCount =
+    document.getElementById("productCount");
+
+const totalViews =
+    document.getElementById("totalViews");
+
+const totalLikes =
+    document.getElementById("totalLikes");
+
+const formMessage =
+    document.getElementById("formMessage");
+
+    const productImages =
+    document.getElementById("productImages");
+
+const imagePreview =
+    document.getElementById("imagePreview");
+
+
+if (!token) {
+    window.location.href = "/login.html";
+}
+
+
+function openForm() {
+
+    addProductSection.classList.remove(
+        "hidden"
+    );
+
+    addProductSection.scrollIntoView({
+        behavior: "smooth"
+    });
+}
+
+
+function closeForm() {
+
+    addProductSection.classList.add(
+        "hidden"
+    );
+
+    productForm.reset();
+
+    formMessage.textContent = "";
+}
+
+
+addProductButton.addEventListener(
+    "click",
+    openForm
+);
+
+
+emptyAddButton.addEventListener(
+    "click",
+    openForm
+);
+
+
+closeFormButton.addEventListener(
+    "click",
+    closeForm
+);
+
+
+async function loadMyProducts() {
+
+    try {
+
+        const response =
+            await fetch(
+                "/api/products/seller/me/products",
+                {
+                    headers: {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.message ||
+                "Failed to load products"
+            );
+        }
+
+        renderProducts(data.products);
+
+    } catch (error) {
+
+        console.error(
+            "Dashboard error:",
+            error
+        );
+
+        productsContainer.innerHTML =
+            `<p>Could not load your products.</p>`;
+    }
+}
+
+
+function renderProducts(products) {
+
+    productsContainer.innerHTML = "";
+
+    const list =
+        Array.isArray(products)
+            ? products
+            : [];
+
+    productCount.textContent =
+        list.length;
+
+    totalViews.textContent =
+        list.reduce(
+            (sum, product) =>
+                sum + Number(product.views || 0),
+            0
+        );
+
+    totalLikes.textContent =
+        list.reduce(
+            (sum, product) =>
+                sum + Number(product.likes || 0),
+            0
+        );
+
+
+    if (list.length === 0) {
+
+        emptyState.classList.remove(
+            "hidden"
+        );
+
+        return;
+    }
+
+
+    emptyState.classList.add(
+        "hidden"
+    );
+
+
+    list.forEach(product => {
+
+        const card =
+            document.createElement("article");
+
+        card.className =
+            "product-card";
+
+
+        card.innerHTML = `
+            <div class="product-placeholder">
+                ${product.images?.length ? "Product image" : "No image"}
+            </div>
+
+            <div class="product-info">
+
+                <h3>
+                    ${escapeHtml(product.title)}
+                </h3>
+
+                <div class="product-price">
+                    ${formatPrice(product.price)}
+                    ${escapeHtml(product.currency || "RWF")}
+                </div>
+
+                <div class="product-meta">
+                    ${escapeHtml(product.category)}
+                </div>
+
+                <div class="product-meta">
+                    Views: ${product.views || 0}
+                    · Likes: ${product.likes || 0}
+                </div>
+
+                <div class="product-meta">
+                    Status: ${escapeHtml(product.status || "active")}
+                </div>
+
+                <div class="product-actions">
+
+                    <button
+                        class="small-button view-button"
+                        data-id="${product._id}"
+                    >
+                        View
+                    </button>
+
+                    <button
+                        class="small-button delete-button"
+                        data-id="${product._id}"
+                    >
+                        Delete
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+
+
+        card
+            .querySelector(".view-button")
+            .addEventListener(
+                "click",
+                () => {
+
+                    window.location.href =
+                        `/product.html?id=${product._id}`;
+                }
+            );
+
+
+        card
+            .querySelector(".delete-button")
+            .addEventListener(
+                "click",
+                () => deleteProduct(product._id)
+            );
+
+
+        productsContainer.appendChild(card);
+    });
+}
+
+
+async function deleteProduct(productId) {
+
+    const confirmed =
+        confirm(
+            "Are you sure you want to delete this product?"
+        );
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/products/${productId}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization":
+                            "Bearer " + token
+                    }
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message ||
+                "Could not delete product"
+            );
+        }
+
+
+        await loadMyProducts();
+
+    } catch (error) {
+
+        console.error(
+            "Delete error:",
+            error
+        );
+
+        alert(error.message);
+    }
+}
+
+
+productForm.addEventListener(
+    "submit",
+    async event => {
+
+        event.preventDefault();
+
+        try {
+
+            formMessage.textContent =
+                "Uploading images...";
+
+
+            const files =
+                Array.from(productImages.files);
+
+
+            if (files.length > 10) {
+
+                throw new Error(
+                    "You can select up to 10 images."
+                );
+            }
+
+
+            const imageUrls = [];
+
+
+            if (files.length > 0) {
+
+                const uploadData =
+                    new FormData();
+
+
+                files.forEach(file => {
+
+                    uploadData.append(
+                        "files",
+                        file
+                    );
+
+                });
+
+
+                const uploadResponse =
+                    await fetch(
+                        "/api/uploads",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Authorization":
+                                    "Bearer " + token
+                            },
+
+                            body: uploadData
+                        }
+                    );
+
+
+                const uploadResult =
+                    await uploadResponse.json();
+
+
+                if (!uploadResponse.ok) {
+
+                    throw new Error(
+                        uploadResult.message ||
+                        "Image upload failed"
+                    );
+                }
+
+
+                uploadResult.files.forEach(
+                    file => {
+
+                        imageUrls.push(
+                            file.url
+                        );
+
+                    }
+                );
+            }
+
+
+            formMessage.textContent =
+                "Creating product...";
+
+
+            const formData =
+                new FormData(productForm);
+
+
+            const product = {
+
+                title:
+                    formData
+                        .get("title")
+                        .trim(),
+
+                description:
+                    formData
+                        .get("description")
+                        .trim(),
+
+                price:
+                    Number(
+                        formData.get("price")
+                    ),
+
+                currency:
+                    formData.get("currency"),
+
+                category:
+                    formData.get("category"),
+
+                location:
+                    formData
+                        .get("location")
+                        .trim(),
+
+                condition:
+                    formData.get("condition"),
+
+                stock:
+                    Number(
+                        formData.get("stock")
+                    ),
+
+                images:
+                    imageUrls
+            };
+
+
+            const response =
+                await fetch(
+                    "/api/products",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+
+                            "Authorization":
+                                "Bearer " + token
+                        },
+
+                        body:
+                            JSON.stringify(product)
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.message ||
+                    "Could not create product"
+                );
+            }
+
+
+            formMessage.textContent =
+                "Product published successfully.";
+
+
+            productForm.reset();
+
+            imagePreview.innerHTML = "";
+
+
+            await loadMyProducts();
+
+
+        } catch (error) {
+
+            console.error(
+                "Create product error:",
+                error
+            );
+
+
+            formMessage.textContent =
+                error.message;
+        }
+    }
+);
+
+productImages.addEventListener(
+    "change",
+    () => {
+
+        imagePreview.innerHTML = "";
+
+        const files =
+            Array.from(productImages.files);
+
+        if (files.length > 10) {
+
+            formMessage.textContent =
+                "You can select up to 10 images.";
+
+            productImages.value = "";
+
+            return;
+        }
+
+        formMessage.textContent = "";
+
+        files.forEach(file => {
+
+            if (!file.type.startsWith("image/")) {
+                return;
+            }
+
+            const reader =
+                new FileReader();
+
+            reader.onload = (event) => {
+
+                const image =
+                    document.createElement("img");
+
+                image.src =
+                    event.target.result;
+
+                image.alt =
+                    file.name;
+
+                imagePreview.appendChild(image);
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+);
+
+
+function formatPrice(price) {
+
+    return new Intl.NumberFormat(
+        "en-RW"
+    ).format(Number(price || 0));
+}
+
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+loadMyProducts();

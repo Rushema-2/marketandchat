@@ -1,0 +1,70 @@
+const express = require("express");
+
+const {
+    createProduct,
+    getProducts,
+    getProduct,
+    getMyProducts,
+    getSellerProducts,
+    updateProduct,
+    deleteProduct
+} = require("../controllers/productController");
+
+const authMiddleware =
+    require("../middleware/authMiddleware");
+
+const optionalAuthMiddleware =
+    require("../middleware/optionalAuthMiddleware");
+
+const router = express.Router();
+
+// ========================================
+// PUBLIC MARKETPLACE
+// ========================================
+
+router.get("/", getProducts);
+
+// IMPORTANT:
+// This must come BEFORE /:id
+router.get(
+    "/seller/me/products",
+    authMiddleware,
+    getMyProducts
+);
+
+// PUBLIC SELLER PORTFOLIO
+// Must come BEFORE /:id
+router.get(
+    "/seller/:sellerId",
+    getSellerProducts
+);
+
+router.get(
+    "/:id",
+    optionalAuthMiddleware,
+    getProduct
+);
+
+// ========================================
+// AUTHENTICATED SELLER
+// ========================================
+
+router.post(
+    "/",
+    authMiddleware,
+    createProduct
+);
+
+router.put(
+    "/:id",
+    authMiddleware,
+    updateProduct
+);
+
+router.delete(
+    "/:id",
+    authMiddleware,
+    deleteProduct
+);
+
+module.exports = router;

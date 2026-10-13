@@ -1,0 +1,131 @@
+
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import api from '../api'
+import './ProductDetails.css'
+
+function formatPrice(price) {
+  const amount = new Intl.NumberFormat('en-RW', {
+    maximumFractionDigits: 0,
+  }).format(Number(price) || 0)
+
+  return `${amount} RWF`
+}
+
+function ProductDetails() {
+  const navigate = useNavigate()
+   const { id } = useParams()
+  const [product, setProduct] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+   const productId = id
+    let cancelled = false
+
+    async function loadProduct() {
+      if (!productId) {
+        setError('Product ID is missing.')
+        setLoading(false)
+        return
+      }
+
+      try {
+        const response = await api.get(`/products/${encodeURIComponent(productId)}`)
+        if (!cancelled) setProduct(response.data.product || response.data)
+      } catch (err) {
+        if (!cancelled) {
+          setError(
+            err.response?.data?.message ||
+            'Could not load this product. Please try again.'
+          )
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadProduct()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  if (loading) {
+    return <main className="product-details-page"><p>Loading product...</p></main>
+  }
+
+  if (error || !product) {
+    return (
+      <main className="product-details-page">
+        <button className="details-back" onClick={() => navigate('/marketplace')}>
+          ← Back to Marketplace
+        </button>
+        <section className="details-message">
+          <h1>Product unavailable</h1>
+          <p>{error || 'This product could not be found.'}</p>
+          <button onClick={() => navigate('/marketplace')}>Browse products</button>
+        </section>
+      </main>
+    )
+  }
+
+  const sellerName = [product.seller?.firstName, product.seller?.lastName]
+    .filter(Boolean)
+    .join(' ') || 'Seller'
+
+  const imagePath = product.images?.[0]
+  const imageUrl = imagePath
+    ? `${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`
+    : ''
+
+  return (
+    <main className="product-details-page">
+      <header className="details-header">
+        <a href="/marketplace" className="details-brand">RwhatsApp</a>
+        <button className="details-back" onClick={() => navigate('/marketplace')}>
+          ← Back to Marketplace
+        </button>
+      </header>
+
+      <section className="details-layout">
+        <div className="details-image">
+          {imageUrl ? (
+            <img src={imageUrl} alt={product.title}
+              onError={(event) => { event.currentTarget.style.display = 'none' }} />
+          ) : (
+            <p>No image available</p>
+          )}
+        </div>
+
+        <div className="details-info">
+          <p className="details-category">{product.category || 'Other'}</p>
+          <h1>{product.title}</h1>
+          <p className="details-price">{formatPrice(product.price)}</p>
+          <p className="details-location">
+            Location: {product.location || 'Not specified'}
+          </p>
+
+          <div className="details-divider" />
+          <h2>Description</h2>
+          <p className="details-description">
+            {product.description || 'No description provided.'}
+          </p>
+
+          <div className="details-divider" />
+          <h2>Seller information</h2>
+          <p className="details-seller">{sellerName}</p>
+          <p className="details-stock">
+            {Number(product.stock) > 0 ? 'In stock' : 'Availability not confirmed'}
+          </p>
+
+          <p className="details-note">
+            Contact the seller to ask questions and confirm availability before buying.
+          </p>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+export default ProductDetails

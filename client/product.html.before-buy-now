@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Product | RwhatsApp Marketplace</title>
+
+    <link rel="stylesheet" href="/css/product.css">
+</head>
+
+<body>
+
+<header class="market-header">
+
+    <div class="brand">
+        <span class="brand-icon">R</span>
+        <span>RwhatsApp Marketplace</span>
+    </div>
+
+    <nav>
+        <a href="/marketplace.html">Marketplace</a>
+        <a href="/chat.html">Chat</a>
+    </nav>
+
+</header>
+
+
+<main class="product-page">
+
+    <a href="/marketplace.html" class="back-link">
+        ← Back to Marketplace
+    </a>
+
+
+    <section id="productLoading" class="state">
+        Loading product...
+    </section>
+
+
+    <section id="productError" class="state hidden">
+        Product not found.
+    </section>
+
+
+    <section id="productContent" class="product-layout hidden">
+
+        <div class="product-gallery">
+
+            <div id="mainMedia" class="main-media">
+            </div>
+
+            <div id="mediaList" class="media-list">
+            </div>
+
+        </div>
+
+
+        <div class="product-details">
+
+            <div class="category-label" id="productCategory">
+            </div>
+
+            <div
+    id="productPromotionBadge"
+    class="product-promotion-badge hidden"
+>
+    🚀 Promoted
+</div>
+
+<div
+    id="productPromotionExpired"
+    class="product-promotion-expired hidden"
+>
+    ⏰ Promotion Expired
+</div>
+
+            <h1 id="productTitle">
+            </h1>
+
+            <div class="price" id="productPrice">
+            </div>
+
+            <div class="meta-row">
+                <span id="productCondition"></span>
+                <span id="productStock"></span>
+            </div>
+
+            <div class="location" id="productLocation">
+            </div>
+
+            <hr>
+
+            <h2>Description</h2>
+
+            <p id="productDescription">
+            </p>
+
+
+            <div class="actions">
+
+                <button
+                    id="chatSellerButton"
+                    class="primary-button"
+                >
+                    💬 Chat with Seller
+                </button>
+
+                <button
+                    id="likeButton"
+                    class="secondary-button"
+                >
+                    ♡ Like
+                </button>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section
+        id="sellerSection"
+        class="seller-section hidden"
+    >
+
+        <h2>Seller</h2>
+
+        <div class="seller-card">
+
+            <div class="seller-avatar" id="sellerAvatar">
+                S
+            </div>
+
+            <div class="seller-info">
+
+                <h3 id="sellerName">
+                </h3>
+
+                <p id="sellerEmail">
+                </p>
+
+                <p id="sellerPhone">
+                </p>
+
+                <button
+                    id="sellerPortfolioButton"
+                    class="secondary-button"
+                >
+                    View Seller Portfolio
+                </button>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+</main>
+
+
+<script src="/js/product.js"></script>
+
+</body>
+</html>

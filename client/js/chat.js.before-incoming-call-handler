@@ -1,0 +1,1639 @@
+const API = "http://localhost:3000/api";
+
+const token = localStorage.getItem("token");
+const currentUser = JSON.parse(
+    localStorage.getItem("user") || "null"
+);
+
+let socket = null;
+let currentConversationId = null;
+let myContacts = [];
+let conversationsCache = [];
+
+
+// ===============================
+// AUTH CHECK
+// ===============================
+
+if (!token || !currentUser) {
+    window.location.href = "login.html";
+}
+
+
+// ===============================
+// DOM
+// ===============================
+const userSearchInput =
+    document.getElementById("userSearchInput");
+
+const searchResults =
+    document.getElementById("searchResults");
+const userInfo =
+    document.getElementById("userInfo");
+
+const conversationList =
+    document.getElementById("conversationList");
+
+    const contactList =
+    document.getElementById("contactsList");
+
+const messagesContainer =
+    document.getElementById("messages");
+
+const chatTitle =
+    document.getElementById("chatTitle");
+
+const messageForm =
+    document.getElementById("messageForm");
+
+const messageInput =
+    document.getElementById("messageInput");
+
+const logoutBtn =
+    document.getElementById("logoutBtn");
+
+    const audioCallButton =
+    document.getElementById("audioCallButton");
+
+const videoCallButton =
+    document.getElementById("videoCallButton");
+
+const endCallButton =
+    document.getElementById("endCallButton");
+
+const callStatus =
+    document.getElementById("callStatus");
+
+const callContainer =
+    document.getElementById("callContainer");
+
+const remoteVideo =
+    document.getElementById("remoteVideo");
+
+const localVideo =
+    document.getElementById("localVideo");
+
+    // ===============================
+// WEBRTC CALL STATE
+// ===============================
+
+let peerConnection = null;
+let localStream = null;
+let currentCallType = null;
+let currentCallUserId = null;
+
+const rtcConfig = {
+    iceServers: [
+        {
+            urls: "stun:stun.l.google.com:19302"
+        }
+    ]
+};
+
+// ===============================
+// CREATE PEER CONNECTION
+// ===============================
+
+function createPeerConnection() {
+
+    const pc =
+        new RTCPeerConnection(rtcConfig);
+
+    pc.onicecandidate = (event) => {
+
+        if (!event.candidate) {
+            return;
+        }
+
+        console.log(
+            "ICE candidate:",
+            event.candidate
+        );
+
+        socket.emit("iceCandidate", {
+            candidate: event.candidate,
+            targetUserId: currentCallUserId
+        });
+    };
+
+
+    pc.ontrack = (event) => {
+
+        console.log(
+            "Remote stream received"
+        );
+
+        if (event.streams && event.streams[0]) {
+
+            remoteVideo.srcObject =
+                event.streams[0];
+        }
+    };
+
+
+    pc.onconnectionstatechange = () => {
+
+        console.log(
+            "WebRTC connection state:",
+            pc.connectionState
+        );
+
+        if (
+            pc.connectionState === "failed" ||
+            pc.connectionState === "disconnected" ||
+            pc.connectionState === "closed"
+        ) {
+
+            console.log(
+                "WebRTC connection ended"
+            );
+        }
+    };
+
+
+    return pc;
+}
+
+// ===============================
+// GET LOCAL AUDIO
+// ===============================
+
+async function getAudioStream() {
+
+    try {
+
+        const stream =
+            await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: false
+            });
+
+        console.log(
+            "Microphone access granted"
+        );
+
+        return stream;
+
+    } catch (error) {
+
+        console.error(
+            "Microphone error:",
+            error
+        );
+
+        alert(
+            "Microphone permission is required for audio calls."
+        );
+
+        return null;
+    }
+}
+
+// ===============================
+// START AUDIO CALL
+// ===============================
+
+async function startAudioCall(targetUserId) {
+
+    console.log(
+        "Starting audio call to:",
+        targetUserId
+    );
+
+    if (!targetUserId) {
+
+        console.error(
+            "No target user ID"
+        );
+
+        return;
+    }
+
+
+    currentCallType =
+        "audio";
+
+    currentCallUserId =
+        targetUserId;
+
+
+    localStream =
+        await getAudioStream();
+
+    if (!localStream) {
+        return;
+    }
+
+
+    peerConnection =
+        createPeerConnection();
+
+
+    localStream
+        .getTracks()
+        .forEach(
+            (track) => {
+
+                peerConnection.addTrack(
+                    track,
+                    localStream
+                );
+
+            }
+        );
+
+
+    callContainer.classList.remove(
+        "hidden"
+    );
+
+    callStatus.innerText =
+        "Calling...";
+
+
+    const offer =
+        await peerConnection.createOffer();
+
+    await peerConnection.setLocalDescription(
+        offer
+    );
+
+
+    console.log(
+        "Sending call offer"
+    );
+
+
+    socket.emit(
+        "callOffer",
+        {
+            targetUserId,
+            offer,
+            callType: "audio"
+        }
+    );
+}
+
+// ===============================
+// AUDIO CALL BUTTON
+// ===============================
+
+if (audioCallButton) {
+
+    audioCallButton.addEventListener(
+        "click",
+        async () => {
+
+            console.log(
+                "Audio call button clicked"
+            );
+
+            if (!currentConversationId) {
+
+                alert(
+                    "Please select a conversation first."
+                );
+
+                return;
+            }
+
+            if (!currentCallUserId) {
+
+                alert(
+                    "No call recipient found."
+                );
+
+                return;
+            }
+
+            await startAudioCall(
+                currentCallUserId
+            );
+        }
+    );
+}
+
+// ===============================
+// API REQUEST
+// ===============================
+
+async function apiRequest(url, options = {}) {
+
+    const response = await fetch(
+        `${API}${url}`,
+        {
+            ...options,
+
+            headers: {
+                "Content-Type": "application/json",
+
+                "Authorization":
+                    `Bearer ${token}`,
+
+                ...(options.headers || {})
+            }
+        }
+    );
+
+    const data = await response.json();
+
+    if (response.status === 401) {
+        logout();
+        return null;
+    }
+
+    if (!response.ok) {
+        throw new Error(
+            data.message || "Request failed"
+        );
+    }
+
+    return data;
+}
+
+
+// ===============================
+// USER INFO
+// ===============================
+
+if (currentUser && userInfo) {
+    userInfo.innerText =
+        `${currentUser.firstName} ${currentUser.lastName}`;
+}
+
+// ===============================
+// SOCKET.IO
+// ===============================
+
+function connectSocket() {
+
+    socket = io(
+        "http://localhost:3000",
+        {
+            auth: {
+                token
+            }
+        }
+    );
+
+
+    socket.on("connect", () => {
+
+        console.log(
+            "Socket connected:",
+            socket.id
+        );
+
+
+       if (currentConversationId) {
+
+    console.log(
+        "JOINING ROOM:",
+        currentConversationId
+    );
+
+    socket.emit(
+        "joinConversation",
+        currentConversationId
+    );
+        }
+    });
+
+
+    socket.on(
+        "connect_error",
+        (error) => {
+
+            console.error(
+                "Socket connection error:",
+                error.message
+            );
+        }
+    );
+
+
+    socket.on(
+        "newMessage",
+     (message) => {
+
+            console.log(
+                "New message:",
+                message
+            );
+
+
+            if (!message) {
+                return;
+            }
+
+
+            /*
+             * Normalize conversation ID.
+             *
+             * Depending on the server response,
+             * message.conversation can be:
+             *
+             * "conversationId"
+             *
+             * OR
+             *
+             * {
+             *     _id: "conversationId"
+             * }
+             */
+
+            const messageConversationId =
+                String(
+                    message.conversation?._id ||
+                    message.conversation?.id ||
+                    message.conversation
+                );
+
+
+            /*
+             * If this message belongs to the
+             * conversation currently open,
+             * add it to the chat window.
+             */
+
+            if (
+                messageConversationId ===
+                String(currentConversationId)
+            ) {
+
+                addMessageToUI(
+                    message
+                );
+
+                scrollMessages();
+            }
+
+
+            /*
+             * Update sidebar immediately.
+             */
+
+            updateConversationFromMessage(
+                message,
+                messageConversationId
+            );
+        }
+    );
+
+
+    socket.on(
+        "messageError",
+        (error) => {
+
+            console.error(
+                "Socket message error:",
+                error
+            );
+
+            alert(
+                error.message ||
+                "Message error"
+            );
+        }
+    );
+}
+
+
+// ===============================
+// UPDATE CONVERSATION FROM MESSAGE
+// ===============================
+
+function updateConversationFromMessage(message, conversationId) {
+    const id = String(conversationId);
+
+    const index = conversationsCache.findIndex(
+        conversation => String(conversation._id) === id
+    );
+
+    if (index === -1) {
+        loadConversations();
+        return;
+    }
+
+    const conversation = conversationsCache[index];
+
+    conversation.lastMessage = message;
+    conversation.updatedAt =
+        message.createdAt || new Date().toISOString();
+
+    // Remove old position
+    conversationsCache.splice(index, 1);
+
+    // Put updated conversation at the top
+    conversationsCache.unshift(conversation);
+
+    // Render directly from cache
+    renderConversationsFromCache();
+}
+
+function renderConversationsFromCache() {
+    renderConversations({
+        conversations: conversationsCache
+    });
+}
+
+// ===============================
+// USER SEARCH
+// ===============================
+
+if (userSearchInput) {
+
+    userSearchInput.addEventListener(
+        "input",
+        async () => {
+
+            const q =
+                userSearchInput.value.trim();
+
+            if (q.length < 2) {
+                searchResults.innerHTML = "";
+                return;
+            }
+
+
+            try {
+
+                const users =
+                    await apiRequest(
+                        `/users/search?q=${q}`
+                    );
+
+
+                searchResults.innerHTML = "";
+
+
+                users.forEach(
+                    (user) => {
+
+                        const div =
+                            document.createElement("div");
+
+                        div.className =
+                            "search-user";
+
+
+                        div.innerHTML = `
+                            <span>
+                                ${user.firstName}
+                                ${user.lastName}
+                            </span>
+
+                            <button>
+    ${
+        myContacts.includes(String(user._id))
+        ? "Chat"
+        : "Add"
+    }
+</button>
+                        `;
+
+
+                       const button =
+    div.querySelector("button");
+
+
+button.addEventListener(
+    "click",
+    async () => {
+
+        if (
+            myContacts.includes(
+                String(user._id)
+            )
+        ) {
+
+            // Already contact -> open chat
+            await openContact(
+                user._id
+            );
+
+        } else {
+
+            // New contact -> add first
+            await addContact(
+                user._id
+            );
+
+            await loadContacts();
+
+            await openContact(
+                user._id
+            );
+
+        }
+
+    }
+);
+
+
+                        searchResults.appendChild(div);
+
+                    }
+                );
+
+
+            } catch(error) {
+
+                console.error(
+                    "Search error:",
+                    error
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+
+
+
+// ===============================
+// ADD CONTACT
+// ===============================
+
+async function addContact(userId) {
+
+    try {
+
+        console.log(
+            "ADDING CONTACT:",
+            String(userId)
+        );
+
+        console.log(
+            "CURRENT USER:",
+            String(currentUser._id || currentUser.id)
+        );
+
+        const result =
+            await apiRequest(
+                "/contacts/add",
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        contactId: String(userId)
+                    })
+                }
+            );
+
+        console.log(
+            "CONTACT ADDED:",
+            result
+        );
+
+        alert("Contact added");
+
+        searchResults.innerHTML = "";
+
+        userSearchInput.value = "";
+
+        await loadContacts();
+
+    } catch (error) {
+
+        console.error(
+            "ADD CONTACT ERROR:",
+            error.message
+        );
+
+        alert(
+            error.message ||
+            "Could not add contact"
+        );
+    }
+}
+
+
+
+async function loadContacts() {
+
+    try {
+
+        console.log("Loading contacts...");
+
+        const data =
+            await apiRequest("/contacts");
+
+        if (!data) {
+            return;
+        }
+
+        console.log(
+            "Contacts response:",
+            data
+        );
+
+        /*
+         * Backend returns an array directly:
+         *
+         * [
+         *   {
+         *     owner: "...",
+         *     contact: {
+         *       _id: "...",
+         *       firstName: "...",
+         *       lastName: "...",
+         *       email: "...",
+         *       phone: "..."
+         *     }
+         *   }
+         * ]
+         */
+
+        const contacts =
+            Array.isArray(data)
+                ? data
+                : data.contacts || [];
+
+        myContacts =
+            contacts
+                .map((item) => {
+
+                    const contact =
+                        item.contact || item;
+
+                    return String(
+                        contact._id ||
+                        contact.id
+                    );
+
+                })
+                .filter(Boolean);
+
+        console.log(
+            "My contacts:",
+            myContacts
+        );
+
+        if (!contactList) {
+            console.warn(
+                "contactsList element not found"
+            );
+
+            return;
+        }
+
+        contactList.innerHTML = "";
+
+        if (contacts.length === 0) {
+
+            contactList.innerHTML =
+                "<p class='empty'>No contacts yet.</p>";
+
+            return;
+        }
+
+        contacts.forEach((item) => {
+
+            const contact =
+                item.contact || item;
+
+            if (!contact || !contact._id) {
+                return;
+            }
+
+            const div =
+                document.createElement("div");
+
+            div.className = "contact";
+
+            div.innerHTML = `
+                <div class="conversation-avatar">
+                    ${escapeHtml(
+                        (
+                            (contact.firstName || "")[0] ||
+                            ""
+                        ) +
+                        (
+                            (contact.lastName || "")[0] ||
+                            ""
+                        )
+                    )}
+                </div>
+
+                <div class="contact-info">
+                    <div class="contact-name">
+                        ${escapeHtml(
+                            `${contact.firstName || ""} ${contact.lastName || ""}`
+                        )}
+                    </div>
+
+                    <div class="contact-phone">
+                        ${escapeHtml(
+                            contact.phone || contact.email || ""
+                        )}
+                    </div>
+                </div>
+            `;
+
+            div.addEventListener(
+                "click",
+                () => {
+                    openContact(contact._id);
+                }
+            );
+
+            contactList.appendChild(div);
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Load contacts error:",
+            error
+        );
+
+        if (contactList) {
+
+            contactList.innerHTML =
+                "<p class='empty'>Failed to load contacts.</p>";
+        }
+    }
+}
+
+// ===============================
+// LOAD CONVERSATIONS
+// ===============================
+
+async function loadConversations() {
+    try {
+        const data = await apiRequest("/conversations");
+
+        if (!data) {
+            return;
+        }
+
+        console.log("Conversations:", data);
+
+        console.log(
+            "RAW JSON:",
+            JSON.stringify(data, null, 2)
+        );
+
+        // Store conversations in cache
+        conversationsCache = [
+            ...(data.conversations || [])
+        ];
+
+        // Render conversations
+        renderConversations({
+            conversations: conversationsCache
+        });
+
+    } catch (error) {
+        console.error(
+            "Load conversations error:",
+            error
+        );
+
+        if (conversationList) {
+            conversationList.innerHTML =
+                "<p>Failed to load conversations.</p>";
+        }
+    }
+}
+
+// ===============================
+// RENDER CONVERSATIONS
+// ===============================
+
+function renderConversations(data) {
+    console.log("Conversations:", data);
+
+    const conversations = data?.conversations || [];
+
+    conversationList.innerHTML = "";
+
+    if (conversations.length === 0) {
+        conversationList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">💬</div>
+                <strong>No chats yet</strong>
+                <span>Start a new conversation</span>
+            </div>
+        `;
+        return;
+    }
+
+    conversations.forEach((conversation) => {
+        const otherUser = getOtherParticipant(conversation);
+
+        if (!otherUser) return;
+
+        const div = document.createElement("div");
+
+        div.className = "conversation";
+
+        if (
+            String(conversation._id) ===
+            String(currentConversationId)
+        ) {
+            div.classList.add("active");
+        }
+
+               const firstName = otherUser.firstName || "";
+        const lastName = otherUser.lastName || "";
+
+        const initials =
+            ((firstName[0] || "") +
+            (lastName[0] || "")).toUpperCase();
+
+        const fullName =
+            `${firstName} ${lastName}`.trim();
+
+        const lastMessage = conversation.lastMessage;
+
+        const preview = lastMessage
+            ? lastMessage.text || ""
+            : "No messages yet";
+
+        const time = lastMessage?.createdAt
+            ? formatConversationTime(lastMessage.createdAt)
+            : "";
+
+        div.innerHTML = `
+            <div class="conversation-avatar">
+                ${escapeHtml(initials)}
+            </div>
+
+            <div class="conversation-content">
+
+                <div class="conversation-top">
+
+                    <div class="conversation-name">
+                        ${escapeHtml(fullName)}
+                    </div>
+
+                    <div class="conversation-time">
+                        ${escapeHtml(time)}
+                    </div>
+
+                </div>
+
+                <div class="conversation-bottom">
+
+                    <div class="conversation-preview">
+                        ${escapeHtml(preview)}
+                    </div>
+
+                </div>
+
+            </div>
+
+            <button
+                class="conversation-menu"
+                title="Chat options"
+                type="button">
+                ⋮
+            </button>
+        `;
+
+        // Open conversation
+        div.addEventListener("click", (event) => {
+
+            if (
+                event.target.closest(
+                    ".conversation-menu"
+                )
+            ) {
+                return;
+            }
+
+            openConversation(
+                conversation
+            );
+        });
+
+        // ===============================
+        // CHAT OPTIONS MENU
+       // ===============================
+
+const menuButton =
+    div.querySelector(".conversation-menu");
+
+menuButton.addEventListener("click", (event) => {
+
+    event.stopPropagation();
+
+    // Remove an existing menu
+    document
+        .querySelectorAll(".chat-options-menu")
+        .forEach(menu => menu.remove());
+
+    const menu = document.createElement("div");
+
+    menu.className = "chat-options-menu";
+
+    menu.innerHTML = `
+        <button
+            type="button"
+            class="delete-chat-option">
+            🗑️ Delete chat
+        </button>
+    `;
+
+    document.body.appendChild(menu);
+
+    // Position menu near the button
+    const rect =
+        menuButton.getBoundingClientRect();
+
+    menu.style.top =
+        `${rect.bottom + 4}px`;
+
+    menu.style.left =
+        `${rect.right - 150}px`;
+
+    const deleteButton =
+        menu.querySelector(
+            ".delete-chat-option"
+        );
+
+    deleteButton.addEventListener(
+        "click",
+        async () => {
+
+            menu.remove();
+
+            const confirmed =
+                confirm(
+                    `Delete chat with ${fullName}?`
+                );
+
+            if (!confirmed) {
+                return;
+            }
+
+            await deleteConversation(
+                conversation._id
+            );
+        }
+    );
+});
+
+        conversationList.appendChild(div);
+    });
+}
+
+// ===============================
+// DELETE CONVERSATION
+// ===============================
+
+async function deleteConversation(conversationId) {
+
+    try {
+
+        const response = await fetch(
+            `${API}/conversations/${conversationId}`,
+            {
+                method: "DELETE",
+                headers: {
+                    Authorization:
+                        `Bearer ${localStorage.getItem("token")}`
+                }
+            }
+        );
+
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+
+            alert(
+                data.message ||
+                "Failed to delete chat"
+            );
+
+            return;
+        }
+
+        // Remove from local cache
+        conversationsCache =
+            conversationsCache.filter(
+                conversation =>
+                    String(conversation._id) !==
+                    String(conversationId)
+            );
+
+        // If deleted chat was open
+        if (
+            String(currentConversationId) ===
+            String(conversationId)
+        ) {
+
+            currentConversationId = null;
+
+            chatTitle.innerText =
+                "Select a conversation";
+
+            messagesContainer.innerHTML = `
+                <p>
+                    Select a conversation to start chatting.
+                </p>
+            `;
+        }
+
+        // Refresh sidebar
+        renderConversations({
+            conversations:
+                conversationsCache
+        });
+
+        console.log(
+            "Conversation deleted:",
+            conversationId
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Delete conversation error:",
+            error
+        );
+
+        alert(
+            "Cannot connect to server"
+        );
+    }
+}
+// ===============================
+// FORMAT CONVERSATION TIME
+// ===============================
+
+function formatConversationTime(
+    dateString
+) {
+
+    const date =
+        new Date(dateString);
+
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const now =
+        new Date();
+
+    const sameDay =
+        date.toDateString() ===
+        now.toDateString();
+
+    if (sameDay) {
+
+        return date.toLocaleTimeString(
+            [],
+            {
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
+    }
+
+    const yesterday =
+        new Date(now);
+
+    yesterday.setDate(
+        now.getDate() - 1
+    );
+
+    if (
+        date.toDateString() ===
+        yesterday.toDateString()
+    ) {
+        return "Yesterday";
+    }
+
+    return date.toLocaleDateString(
+        [],
+        {
+            day: "2-digit",
+            month: "2-digit"
+        }
+    );
+}
+
+
+// ===============================
+// FIND OTHER PARTICIPANT
+// ===============================
+
+// ===============================
+
+function getOtherParticipant(conversation) {
+
+    if (
+        !conversation.participants ||
+        !Array.isArray(conversation.participants)
+    ) {
+        return null;
+    }
+
+    return conversation.participants.find(
+        (participant) => {
+
+            const id = String(
+                participant._id ||
+                participant.id
+            );
+
+            return id !==
+                String(currentUser._id || currentUser.id);
+        }
+    );
+}
+
+
+// ===============================
+// OPEN CONVERSATION
+// ===============================
+
+async function openConversation(
+    conversation
+) {
+
+    const conversationId =
+        String(conversation._id);
+
+    console.log(
+        "Opening conversation:",
+        conversationId
+    );
+
+    if (
+        socket &&
+        currentConversationId
+    ) {
+        socket.emit(
+            "leaveConversation",
+            currentConversationId
+        );
+    }
+
+    currentConversationId =
+        conversationId;
+
+    const otherUser =
+    getOtherParticipant(
+        conversation
+    );
+
+if (otherUser) {
+
+    chatTitle.innerText =
+        `${otherUser.firstName} ${otherUser.lastName}`;
+
+    currentCallUserId =
+        String(
+            otherUser._id ||
+            otherUser.id
+        );
+
+    console.log(
+        "CALL TARGET USER:",
+        currentCallUserId
+    );
+
+} else {
+
+    chatTitle.innerText =
+        "Conversation";
+
+    currentCallUserId = null;
+}
+
+    messagesContainer.innerHTML =
+        "<p>Loading messages...</p>";
+
+    if (socket && socket.connected) {
+
+        socket.emit(
+            "joinConversation",
+            conversationId
+        );
+    }
+
+    await loadMessages(
+        conversationId
+    );
+}
+
+// ===============================
+// OPEN CONTACT
+// CREATE OR GET CONVERSATION
+// ===============================
+
+async function openContact(userId) {
+
+    try {
+
+        console.log(
+            "Creating/opening conversation with:",
+            userId
+        );
+
+        const result =
+            await apiRequest(
+                "/conversations",
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        userId: userId
+                    })
+                }
+            );
+
+        if (!result || !result.conversation) {
+
+            throw new Error(
+                "Conversation was not returned by server"
+            );
+        }
+
+        console.log(
+            "Conversation:",
+            result.conversation
+        );
+
+        await loadConversations();
+
+        await openConversation(
+            result.conversation
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Open contact error:",
+            error
+        );
+
+        alert(
+            error.message ||
+            "Could not open conversation"
+        );
+    }
+}
+
+
+// ===============================
+// LOAD MESSAGES
+// ===============================
+
+async function loadMessages(
+    conversationId
+) {
+
+    try {
+
+        console.log(
+            "Loading messages for:",
+            conversationId
+        );
+
+        const data =
+            await apiRequest(
+                `/messages/${conversationId}`
+            );
+
+        if (!data) return;
+
+        console.log(
+    "Messages response:",
+    JSON.stringify(data, null, 2)
+);
+        messagesContainer.innerHTML = "";
+
+        const messages =
+            data.messages || [];
+
+        if (messages.length === 0) {
+
+            messagesContainer.innerHTML =
+                "<p>No messages yet.</p>";
+
+            return;
+        }
+
+        messages.forEach(
+            (message) => {
+
+                addMessageToUI(
+                    message
+                );
+            }
+        );
+
+        scrollMessages();
+
+    } catch (error) {
+
+        console.error(
+            "Load messages error:",
+            error
+        );
+
+        messagesContainer.innerHTML =
+            "<p>Failed to load messages.</p>";
+    }
+}
+
+
+// ===============================
+// ADD MESSAGE TO UI
+// ===============================
+
+function addMessageToUI(message) {
+
+    console.log(
+        "ADDING MESSAGE TO UI:",
+        message.text
+    );
+
+    if (!message || !message._id) {
+        return;
+    }
+
+    // Prevent duplicates
+    const existing =
+        document.querySelector(
+            `[data-message-id="${message._id}"]`
+        );
+
+    if (existing) {
+        return;
+    }
+
+    const div =
+        document.createElement("div");
+
+    div.className = "message";
+
+    div.dataset.messageId =
+        message._id;
+
+    const sender =
+        message.sender;
+
+    const senderId =
+        String(
+            sender?._id ||
+            sender?.id ||
+            message.sender
+        );
+
+   if (
+ senderId ===
+ String(
+    currentUser._id || currentUser.id
+ )
+    ) {
+        div.classList.add("mine");
+    }
+
+    const senderName =
+        sender
+            ? `${sender.firstName || ""} ${sender.lastName || ""}`.trim()
+            : "User";
+
+    div.innerHTML = `
+       
+
+        <div>
+            ${escapeHtml(message.text || "")}
+        </div>
+    `;
+
+    // THIS IS IMPORTANT
+    messagesContainer.appendChild(div);
+
+    scrollMessages();
+}
+
+
+// ===============================
+// SEND MESSAGE
+// ===============================
+
+messageForm.addEventListener(
+    "submit",
+    (event) => {
+
+        event.preventDefault();
+
+        const text =
+            messageInput.value.trim();
+
+        if (!currentConversationId) {
+
+            alert(
+                "Select a conversation first."
+            );
+
+            return;
+        }
+
+        if (!text) {
+            return;
+        }
+
+        if (
+            !socket ||
+            !socket.connected
+        ) {
+
+            alert(
+                "Socket is not connected."
+            );
+
+            return;
+        }
+
+        socket.emit(
+            "sendMessage",
+            {
+                conversationId:
+                    currentConversationId,
+
+                text
+            }
+        );
+
+        messageInput.value = "";
+        messageInput.focus();
+    }
+);
+
+
+// ===============================
+// LOGOUT
+// ===============================
+
+function logout() {
+
+    if (socket) {
+        socket.disconnect();
+    }
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    window.location.href =
+        "login.html";
+}
+
+
+logoutBtn.addEventListener(
+    "click",
+    logout
+);
+
+
+
+// ===============================
+// HTML ESCAPE
+// ===============================
+
+function escapeHtml(text) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        String(text);
+
+    return div.innerHTML;
+}
+
+
+// ===============================
+// SCROLL
+// ===============================
+
+function scrollMessages() {
+
+    messagesContainer.scrollTop =
+        messagesContainer.scrollHeight;
+}
+
+
+// ===============================
+// START
+// ===============================
+
+connectSocket();
+
+loadContacts();
+
+loadConversations();
+
+

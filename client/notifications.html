@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Notifications | RwhatsApp</title>
+
+    <link rel="stylesheet" href="/css/notifications.css">
+</head>
+
+<body>
+
+<header class="notifications-header">
+
+    <div class="brand">
+        <span class="brand-icon">R</span>
+        <span>RwhatsApp Notifications</span>
+    </div>
+
+    <nav>
+        <a href="/marketplace.html">Marketplace</a>
+        <a href="/chat.html">Chat</a>
+    </nav>
+
+</header>
+
+<main class="notifications-container">
+
+    <div class="notifications-title-row">
+
+        <div>
+            <h1>Notifications</h1>
+            <p id="notificationSummary">
+                Your latest notifications
+            </p>
+        </div>
+
+        <button
+            id="markAllReadButton"
+            class="secondary-button"
+        >
+            Mark all as read
+        </button>
+
+    </div>
+
+    <section id="loadingState" class="state">
+        Loading notifications...
+    </section>
+
+    <section
+        id="errorState"
+        class="state hidden"
+    >
+        Failed to load notifications.
+    </section>
+
+    <section
+        id="emptyState"
+        class="state hidden"
+    >
+        <div class="empty-icon">🔔</div>
+        <h2>No notifications</h2>
+        <p>You don't have any notifications yet.</p>
+    </section>
+
+    <section
+        id="notificationsList"
+        class="notifications-list hidden"
+    ></section>
+
+</main>
+
+<script src="/js/notifications.js"></script>
+
+</body>
+</html>

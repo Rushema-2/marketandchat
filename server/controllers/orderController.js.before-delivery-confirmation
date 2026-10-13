@@ -1,0 +1,540 @@
+const Order = require("../models/Order");
+const mongoose = require("mongoose");
+const Product = require("../models/Product");
+const User = require("../models/User");
+const { requestToPay } = require("../services/momoService");
+const {
+    getPaymentStatus
+} = require("../services/momoPaymentStatusService");
+
+const COMMISSION_RATE = 5;
+
+const createOrder = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+
+        const {
+            productId,
+            quantity
+        } = req.body;
+
+        if (!productId || !quantity) {
+            return res.status(400).json({
+                message: "Product and quantity are required"
+            });
+        }
+
+        const requestedQuantity = Number(quantity);
+
+        if (
+            !Number.isInteger(requestedQuantity) ||
+            requestedQuantity < 1
+        ) {
+            return res.status(400).json({
+                message: "Quantity must be a positive integer"
+            });
+        }
+
+        const product = await Product.findById(productId);
+
+        if (!product) {
+            return res.status(404).json({
+                message: "Product not found"
+            });
+        }
+
+        if (product.status !== "active") {
+            return res.status(400).json({
+                message: "Product is not available"
+            });
+        }
+
+        if (String(product.seller) === String(buyerId)) {
+            return res.status(400).json({
+                message: "You cannot buy your own product"
+            });
+        }
+
+        if (product.stock < requestedQuantity) {
+            return res.status(400).json({
+                message: "Not enough stock available"
+            });
+        }
+
+        const unitPrice = product.price;
+
+        const totalAmount =
+            unitPrice * requestedQuantity;
+
+        const commissionAmount =
+            Math.round(
+                totalAmount * COMMISSION_RATE / 100
+            );
+
+        const sellerAmount =
+            totalAmount - commissionAmount;
+
+        const order = await Order.create({
+            buyer: buyerId,
+            seller: product.seller,
+            product: product._id,
+            quantity: requestedQuantity,
+            unitPrice,
+            totalAmount,
+            currency: product.currency || "RWF",
+            commissionRate: COMMISSION_RATE,
+            commissionAmount,
+            sellerAmount,
+            status: "pending"
+        });
+
+        return res.status(201).json({
+            message: "Order created successfully",
+            order
+        });
+
+    } catch (error) {
+        console.error(
+            "Create order error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to create order"
+        });
+    }
+};
+
+const payOrder = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+        const { orderId } = req.params;
+
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({
+                message: "Order not found"
+            });
+        }
+
+        if (String(order.buyer) !== String(buyerId)) {
+            return res.status(403).json({
+                message: "You are not allowed to pay for this order"
+            });
+        }
+
+        if (order.status !== "pending") {
+            return res.status(400).json({
+                message: "Order is not pending"
+            });
+        }
+
+        if (order.paymentStatus === "successful") {
+            return res.status(400).json({
+                message: "Order has already been paid"
+            });
+        }
+
+        const product = await Product.findById(order.product);
+
+        if (!product) {
+            return res.status(404).json({
+                message: "Product not found"
+            });
+        }
+
+        if (product.status !== "active") {
+            return res.status(400).json({
+                message: "Product is no longer available"
+            });
+        }
+
+        if (product.stock < order.quantity) {
+            return res.status(400).json({
+                message: "Not enough stock available"
+            });
+        }
+
+        const buyer = await User.findById(buyerId);
+
+        if (!buyer || !buyer.phone) {
+            return res.status(400).json({
+                message: "Buyer phone number is required for payment"
+            });
+        }
+
+        const payment = await requestToPay({
+            amount: order.totalAmount,
+            currency: order.currency || "RWF",
+            externalId: order._id,
+            payerPhone: buyer.phone
+        });
+
+        order.paymentProvider = "mtn_momo";
+        order.paymentReference = payment.referenceId;
+        order.paymentStatus = "pending";
+
+        await order.save();
+
+        return res.status(200).json({
+            message: "Payment request sent successfully",
+            orderId: order._id,
+            paymentReference: payment.referenceId,
+            paymentStatus: order.paymentStatus,
+            paymentProvider: order.paymentProvider
+        });
+
+    } catch (error) {
+        console.error(
+            "Pay order error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to initiate payment"
+        });
+    }
+};
+
+const checkOrderPayment = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+        const { orderId } = req.params;
+
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({
+                message: "Order not found"
+            });
+        }
+
+        if (String(order.buyer) !== String(buyerId)) {
+            return res.status(403).json({
+                message: "You are not allowed to check this order"
+            });
+        }
+
+        if (!order.paymentReference) {
+            return res.status(400).json({
+                message: "Payment has not been initiated"
+            });
+        }
+
+        if (order.paymentStatus === "successful") {
+            return res.status(200).json({
+                message: "Payment already confirmed",
+                paymentStatus: "successful",
+                orderStatus: order.status
+            });
+        }
+
+        const momoStatus = await getPaymentStatus(
+            order.paymentReference
+        );
+
+        const momoResult =
+            String(momoStatus.status || "").toUpperCase();
+
+        if (momoResult === "SUCCESSFUL") {
+            const updatedProduct =
+                await Product.findOneAndUpdate(
+                    {
+                        _id: order.product,
+                        status: "active",
+                        stock: {
+                            $gte: order.quantity
+                        }
+                    },
+                    {
+                        $inc: {
+                            stock: -order.quantity
+                        }
+                    },
+                    {
+                        new: true
+                    }
+                );
+
+            if (!updatedProduct) {
+                return res.status(409).json({
+                    message:
+                        "Payment was successful but stock is no longer available"
+                });
+            }
+
+            order.paymentStatus = "successful";
+            order.status = "paid";
+
+            await order.save();
+
+            if (updatedProduct.stock === 0) {
+                updatedProduct.status = "sold";
+                await updatedProduct.save();
+            }
+
+            return res.status(200).json({
+                message: "Payment confirmed successfully",
+                paymentStatus: "successful",
+                orderStatus: "paid",
+                remainingStock: updatedProduct.stock
+            });
+        }
+
+        if (
+            momoResult === "FAILED" ||
+            momoResult === "REJECTED"
+        ) {
+            order.paymentStatus = "failed";
+
+            await order.save();
+
+            return res.status(200).json({
+                message: "Payment failed",
+                paymentStatus: "failed",
+                orderStatus: order.status
+            });
+        }
+
+        return res.status(200).json({
+            message: "Payment is still pending",
+            paymentStatus: "pending",
+            momoStatus: momoStatus.status || "PENDING"
+        });
+
+    } catch (error) {
+        console.error(
+            "Check order payment error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to check payment status"
+        });
+    }
+};
+
+const getMyOrders = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+
+        const orders = await Order.find({
+            buyer: buyerId
+        })
+        .populate(
+            "product",
+            "title price currency images status"
+        )
+        .populate(
+            "seller",
+            "firstName lastName"
+        )
+        .sort({
+            createdAt: -1
+        });
+
+        return res.status(200).json({
+            orders
+        });
+
+    } catch (error) {
+        console.error(
+            "Get my orders error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to load orders"
+        });
+    }
+};
+
+const getMySales = async (req, res) => {
+    try {
+        const sellerId = req.user.userId;
+
+        const orders = await Order.find({
+            seller: sellerId
+        })
+        .populate(
+            "product",
+            "title price currency images status"
+        )
+        .populate(
+            "buyer",
+            "firstName lastName"
+        )
+        .sort({
+            createdAt: -1
+        });
+
+        return res.status(200).json({
+            orders
+        });
+
+    } catch (error) {
+        console.error(
+            "Get my sales error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to load sales"
+        });
+    }
+};
+
+const getSalesSummary = async (req, res) => {
+    try {
+        const sellerId = req.user.userId;
+
+        const summary = await Order.aggregate([
+            {
+                $match: {
+                    seller: new mongoose.Types.ObjectId(sellerId),
+                    status: {
+                        $in: ["paid", "completed"]
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalSales: {
+                        $sum: "$totalAmount"
+                    },
+                    totalCommission: {
+                        $sum: "$commissionAmount"
+                    },
+                    totalEarnings: {
+                        $sum: "$sellerAmount"
+                    },
+                    totalOrders: {
+                        $sum: 1
+                    }
+                }
+            }
+        ]);
+
+        const result = summary[0] || {
+            totalSales: 0,
+            totalCommission: 0,
+            totalEarnings: 0,
+            totalOrders: 0
+        };
+
+        return res.status(200).json({
+            summary: {
+                totalSales: result.totalSales,
+                totalCommission: result.totalCommission,
+                totalEarnings: result.totalEarnings,
+                totalOrders: result.totalOrders
+            }
+        });
+
+    } catch (error) {
+        console.error(
+            "Get sales summary error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to load sales summary"
+        });
+    }
+};
+
+const updateOrderStatus = async (req, res) => {
+    try {
+        const sellerId = req.user.userId;
+        const { orderId } = req.params;
+        const { status } = req.body;
+
+        const allowedStatuses = [
+            "processing",
+            "shipped",
+            "completed"
+        ];
+
+        if (!mongoose.Types.ObjectId.isValid(orderId)) {
+            return res.status(400).json({
+                message: "Invalid order ID"
+            });
+        }
+
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).json({
+                message:
+                    "Invalid status. Use processing, shipped, or completed."
+            });
+        }
+
+        const order = await Order.findOne({
+            _id: orderId,
+            seller: sellerId
+        });
+
+        if (!order) {
+            return res.status(404).json({
+                message: "Order not found"
+            });
+        }
+
+        if (status === "processing") {
+            if (order.status !== "paid") {
+                return res.status(400).json({
+                    message:
+                        "Only paid orders can be moved to processing."
+                });
+            }
+        }
+
+        if (status === "shipped") {
+            if (order.status !== "processing") {
+                return res.status(400).json({
+                    message:
+                        "Only processing orders can be marked as shipped."
+                });
+            }
+        }
+
+        if (status === "completed") {
+            if (order.status !== "processing") {
+                return res.status(400).json({
+                    message:
+                        "Only processing orders can be completed."
+                });
+            }
+        }
+
+        order.status = status;
+
+        await order.save();
+
+        return res.status(200).json({
+            message: "Order status updated successfully",
+            order
+        });
+
+    } catch (error) {
+        console.error(
+            "Update order status error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to update order status"
+        });
+    }
+};
+
+module.exports = {
+    createOrder,
+    payOrder,
+    checkOrderPayment,
+    getMyOrders,
+    getMySales,
+    getSalesSummary,
+    updateOrderStatus
+};
