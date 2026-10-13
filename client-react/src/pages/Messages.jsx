@@ -21,6 +21,9 @@ export default function Messages() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [currentUserId, setCurrentUserId] = useState('')
+  const [onlineUserIds, setOnlineUserIds] = useState([])
+  const [typingUserId, setTypingUserId] = useState('')
+const typingTimerRef = useRef(null)
 
   const socketRef = useRef(null)
   const selectedRef = useRef(null)
@@ -57,6 +60,42 @@ export default function Messages() {
     })
 
     socketRef.current = socket
+
+    socket.on('userTyping', ({ userId, conversationId }) => {
+  if (
+    String(userId) !== String(currentUserId) &&
+    String(conversationId) === String(selectedRef.current?._id)
+  ) {
+    setTypingUserId(String(userId))
+  }
+})
+
+socket.on('userStoppedTyping', ({ userId, conversationId }) => {
+  if (
+    String(conversationId) === String(selectedRef.current?._id) &&
+    String(userId) === String(otherParticipant(selectedRef.current)?._id)
+  ) {
+    setTypingUserId('')
+  }
+})
+
+    socket.on('onlineUsers', (userIds) => {
+  setOnlineUserIds(userIds.map(String))
+})
+
+socket.on('userOnline', ({ userId }) => {
+  setOnlineUserIds((previous) =>
+    previous.includes(String(userId))
+      ? previous
+      : [...previous, String(userId)]
+  )
+})
+
+socket.on('userOffline', ({ userId }) => {
+  setOnlineUserIds((previous) =>
+    previous.filter((id) => id !== String(userId))
+  )
+})
 
     socket.on('connect', () => {
       setError('')
@@ -239,10 +278,23 @@ export default function Messages() {
                   <span className="conversation-avatar">
                     {getName(person).charAt(0).toUpperCase()}
                   </span>
-                  <span className="conversation-copy">
-                    <strong>{getName(person)}</strong>
-                    <small>{conversation.lastMessage?.text || 'Open conversation'}</small>
-                  </span>
+
+<span className="conversation-avatar">
+  {getName(person).charAt(0).toUpperCase()}
+</span>
+<span className="conversation-copy">
+  <strong>{getName(person)}</strong>
+  <small className="presence-status">
+    <span
+      className={`presence-dot ${
+        onlineUserIds.includes(getId(person)) ? 'is-online' : ''
+      }`}
+    />
+    {onlineUserIds.includes(getId(person)) ? 'Online' : 'Offline'}
+  </small>
+  <small>{conversation.lastMessage?.text || 'Open conversation'}</small>
+</span>
+
                 </button>
               )
             })}
@@ -258,8 +310,13 @@ export default function Messages() {
             ) : (
               <>
                 <div className="message-panel-heading">
-                  <h2>{getName(otherParticipant(selected))}</h2>
-                </div>
+  <div>
+    <h2>{getName(otherParticipant(selected))}</h2>
+    {typingUserId === getId(otherParticipant(selected)) && (
+      <small className="typing-indicator">Typing...</small>
+    )}
+  </div>
+</div>
 
                 <div className="message-list">
                   {messages.length === 0 && (
@@ -289,7 +346,31 @@ export default function Messages() {
                 <form className="message-compose" onSubmit={sendMessage}>
                   <input
                     value={text}
-                    onChange={(event) => setText(event.target.value)}
+                   onChange={(event) => {
+  const value = event.target.value
+  setText(value)
+
+  const socket = socketRef.current
+  const conversationId = selectedRef.current?._id
+
+  if (!socket?.connected || !conversationId) return
+
+  if (typingTimerRef.current) {
+    clearTimeout(typingTimerRef.current)
+  }
+
+  if (value.trim()) {
+    socket.emit('typing', { conversationId })
+
+    typingTimerRef.current = setTimeout(() => {
+      socket.emit('stopTyping', { conversationId })
+      typingTimerRef.current = null
+    }, 1200)
+  } else {
+    socket.emit('stopTyping', { conversationId })
+    typingTimerRef.current = null
+  }
+}}
                     placeholder="Write a message..."
                     aria-label="Write a message"
                     maxLength={5000}

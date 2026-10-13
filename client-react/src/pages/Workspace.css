@@ -77,3 +77,30 @@
 .my-product-actions a{font-size:13px;font-weight:700;text-decoration:none}
 @media(max-width:850px){.workspace-header{align-items:flex-start;flex-direction:column;gap:12px}.workspace-nav{width:100%}.workspace-content{padding:26px 16px 45px}.orders-list{grid-template-columns:1fr}.my-products-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.workspace-nav{gap:2px}.workspace-nav a{font-size:12px;padding:9px 8px}.workspace-title{align-items:flex-start;flex-direction:column}.messages-layout{grid-template-columns:1fr}.conversation-list{border-right:0;border-bottom:1px solid #e5ebed}.message-list{min-height:240px}.my-products-grid{grid-template-columns:1fr}.product-form-grid{grid-template-columns:1fr}.order-image{width:80px;height:80px}.workspace-header{padding:14px 16px}}
+.presence-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #74818a;
+  font-size: 11px;
+}
+
+.presence-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9ca3af;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.presence-dot.is-online {
+  background: #16a34a;
+}
+
+.typing-indicator {
+  display: block;
+  margin-top: 4px;
+  color: #087e70;
+  font-size: 12px;
+}
