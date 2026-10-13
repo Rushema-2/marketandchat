@@ -210,6 +210,38 @@ if (wasOffline) {
         }
     );
 
+    // ====================================
+// TYPING INDICATOR
+// ====================================
+
+socket.on("typing", ({ conversationId } = {}) => {
+    if (!conversationId) return;
+
+    const room = `conversation:${conversationId}`;
+
+    // Only relay typing events to a room the socket has joined.
+    if (!socket.rooms.has(room)) return;
+
+    socket.to(room).emit("userTyping", {
+        userId: String(socket.userId),
+        conversationId: String(conversationId)
+    });
+});
+
+socket.on("stopTyping", ({ conversationId } = {}) => {
+    if (!conversationId) return;
+
+    const room = `conversation:${conversationId}`;
+
+    // Only relay stop-typing events to a room the socket has joined.
+    if (!socket.rooms.has(room)) return;
+
+    socket.to(room).emit("userStoppedTyping", {
+        userId: String(socket.userId),
+        conversationId: String(conversationId)
+    });
+});
+
 
     // ====================================
     // SEND MESSAGE
