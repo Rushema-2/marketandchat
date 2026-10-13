@@ -1,0 +1,5 @@
+
+# Environment secrets
+.env
+server/.env
+client/.env

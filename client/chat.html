@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>RwhatsApp </title>
+
+    <link rel="stylesheet" href="./css/chat.css">
+</head>
+
+<body>
+
+    <div class="app">
+
+        <!-- Conversations -->
+       <aside class="sidebar">
+
+    <!-- SIDEBAR HEADER -->
+    <div class="sidebar-header">
+
+        <div class="profile">
+            <div class="avatar" id="profileAvatar">
+                JD
+            </div>
+
+            <div class="profile-info">
+                <strong id="userInfo">
+                    User
+                </strong>
+            </div>
+        </div>
+
+        <div class="sidebar-actions">
+
+    <button
+        id="profileBtn"
+        title="Profile">
+        👤
+    </button>
+
+    <button
+        id="settingsBtn"
+        title="Settings">
+        ⚙️
+    </button>
+
+    <button
+        id="newChatBtn"
+        title="New chat">
+        ✚
+    </button>
+
+    <button
+        id="logoutBtn"
+        title="Logout">
+        ⇥
+    </button>
+
+</div>
+
+    </div>
+
+
+    <!-- SEARCH -->
+    <div class="search-box">
+
+        <span>🔍</span>
+
+        <input
+            id="userSearchInput"
+            type="text"
+            placeholder="Search or start new chat"
+            autocomplete="off"
+        >
+
+    </div>
+
+
+    <!-- TABS -->
+    <div class="sidebar-tabs">
+
+        <button
+            id="chatsTab"
+            class="sidebar-tab active">
+            Chats
+        </button>
+
+        <button
+            id="contactsTab"
+            class="sidebar-tab">
+            Contacts
+        </button>
+
+    </div>
+
+
+    <a
+        href="/my-orders.html"
+        class="my-orders-link"
+        style="display:block; margin:12px; padding:12px 14px; background:#f0f2f5; border-radius:8px; color:#075e54; text-decoration:none; font-weight:600;">
+        🛍️ My Orders
+    </a>
+
+    <!-- SEARCH RESULTS -->
+    <div id="searchResults"></div>
+
+
+    <!-- CHAT LIST -->
+    <div
+        id="conversationList"
+        class="sidebar-list">
+        <p class="loading">
+            Loading conversations...
+        </p>
+
+    </div>
+
+
+    <!-- CONTACT LIST -->
+    <div
+        id="contactsList"
+        class="sidebar-list"
+        style="display:none;">
+
+        <p class="loading">
+            Loading contacts...
+        </p>
+
+    </div>
+
+</aside>
+
+
+        <!-- Chat -->
+        <main class="chat">
+
+            <header class="chat-header">
+                <h2 id="chatTitle">
+                    Select a conversation
+                </h2>
+
+    <div class="call-buttons">
+
+        <button
+            id="audioCallButton"
+            type="button"
+            title="Audio call">
+            📞
+        </button>
+
+        <button
+            id="videoCallButton"
+            type="button"
+            title="Video call">
+            🎥
+        </button>
+
+    </div>
+
+            </header>
+
+
+            <section id="messages">
+                <p>Select a conversation to start chatting.</p>
+            </section>
+
+
+            <form id="messageForm">
+
+                <input
+                    id="messageInput"
+                    type="text"
+                    placeholder="Type a message..."
+                    autocomplete="off"
+                >
+
+                <button type="submit">
+                    Send
+                </button>
+
+            </form>
+
+        </main>
+
+        <div id="callContainer" class="call-container hidden">
+
+    <div class="call-header">
+        <span id="callStatus">
+            Calling...
+        </span>
+
+        <button
+            id="endCallButton"
+            type="button">
+            End call
+        </button>
+    </div>
+
+    <video
+        id="remoteVideo"
+        autoplay
+        playsinline>
+    </video>
+
+    <audio
+    id="remoteAudio"
+    autoplay>
+</audio>
+
+    <video
+        id="localVideo"
+        autoplay
+        muted
+        playsinline>
+    </video>
+
+</div>
+
+    </div>
+
+    <!-- PROFILE PANEL -->
+<div id="profilePanel" class="profile-panel hidden">
+
+    <div class="profile-panel-header">
+
+        <button
+            id="closeProfileBtn"
+            type="button">
+            ←
+        </button>
+
+        <h2>Profile</h2>
+
+    </div>
+
+    <div class="profile-panel-body">
+
+        <div
+            class="profile-avatar-large"
+            id="profileAvatarLarge">
+            JD
+        </div>
+
+        <h3 id="profileName">
+            User
+        </h3>
+
+        <p id="profileEmail">
+            Email
+        </p>
+
+        <p id="profilePhone">
+            Phone
+        </p>
+
+    </div>
+
+</div>
+
+<!-- SETTINGS PANEL -->
+<div id="settingsPanel" class="settings-panel hidden">
+
+    <div class="settings-panel-header">
+
+        <button
+            id="closeSettingsBtn"
+            type="button">
+            ←
+        </button>
+
+        <h2>Settings</h2>
+
+    </div>
+
+    <div class="settings-panel-body">
+
+        <button
+            id="accountSettingsBtn"
+            class="settings-item"
+            type="button">
+
+            <span class="settings-icon">👤</span>
+
+            <span>
+                <strong>Account</strong>
+                <small>Manage your account</small>
+            </span>
+
+        </button>
+
+
+        <button
+            id="privacySettingsBtn"
+            class="settings-item"
+            type="button">
+
+            <span class="settings-icon">🔒</span>
+
+            <span>
+                <strong>Privacy</strong>
+                <small>Manage your privacy</small>
+            </span>
+
+        </button>
+
+
+        <button
+            id="notificationSettingsBtn"
+            class="settings-item"
+            type="button">
+
+            <span class="settings-icon">🔔</span>
+
+            <span>
+                <strong>Notifications</strong>
+                <small>Manage notifications</small>
+            </span>
+
+        </button>
+
+
+        <button
+            id="chatSettingsBtn"
+            class="settings-item"
+            type="button">
+
+            <span class="settings-icon">💬</span>
+
+            <span>
+                <strong>Chats</strong>
+                <small>Chat settings</small>
+            </span>
+
+        </button>
+
+    </div>
+
+</div>
+
+<!-- ACCOUNT SETTINGS PANEL -->
+<div id="accountPanel" class="account-panel hidden">
+
+    <div class="account-panel-header">
+
+        <button
+            id="closeAccountBtn"
+            type="button">
+            ←
+        </button>
+
+        <h2>Account</h2>
+
+    </div>
+
+    <div class="account-panel-body">
+
+        <label>
+            First name
+            <input
+                id="accountFirstName"
+                type="text">
+        </label>
+
+        <label>
+            Last name
+            <input
+                id="accountLastName"
+                type="text">
+        </label>
+
+        <label>
+            Email
+            <input
+                id="accountEmail"
+                type="email">
+        </label>
+
+        <label>
+            Phone
+            <input
+                id="accountPhone"
+                type="tel">
+        </label>
+
+        <div class="password-section">
+
+    <h3>Change password</h3>
+
+    <label>
+        Current password
+        <input
+            id="currentPassword"
+            type="password">
+    </label>
+
+    <label>
+        New password
+        <input
+            id="newPassword"
+            type="password">
+    </label>
+
+    <label>
+        Confirm new password
+        <input
+            id="confirmPassword"
+            type="password">
+    </label>
+
+    <button
+        id="changePasswordBtn"
+        type="button">
+        Change password
+    </button>
+
+</div>
+
+        <button
+            id="saveAccountBtn"
+            type="button">
+            Save changes
+        </button>
+
+    </div>
+
+</div>
+
+
+
+
+    <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+    <script src="js/chat.js"></script>
+
+</body>
+
+</html>

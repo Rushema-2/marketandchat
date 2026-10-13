@@ -1,0 +1,65 @@
+const Promotion = require("../models/Promotion");
+const Product = require("../models/Product");
+
+const expirePromotions = async () => {
+    try {
+        const now = new Date();
+
+        const expiredPromotions =
+            await Promotion.find({
+                status: "active",
+                endDate: {
+                    $lte: now
+                }
+            });
+
+        if (expiredPromotions.length === 0) {
+            return 0;
+        }
+
+        for (const promotion of expiredPromotions) {
+            promotion.status = "expired";
+
+            await promotion.save();
+
+            const otherActivePromotion =
+                await Promotion.findOne({
+                    product: promotion.product,
+                    status: "active",
+                    endDate: {
+                        $gt: now
+                    }
+                });
+
+            if (!otherActivePromotion) {
+                await Product.findByIdAndUpdate(
+                    promotion.product,
+                    {
+                        isPromoted: false,
+                        promotionStart: null,
+                        promotionEnd: null,
+                        promotionPackage: null
+                    }
+                );
+            }
+        }
+
+        console.log(
+            `Expired promotions: ${expiredPromotions.length}`
+        );
+
+        return expiredPromotions.length;
+
+    } catch (error) {
+        console.error(
+            "Promotion expiration error:",
+            error
+        );
+
+        return 0;
+    }
+};
+
+module.exports = {
+    expirePromotions
+};

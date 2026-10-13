@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Seller Portfolio | RwhatsApp</title>
+
+    <link
+        rel="stylesheet"
+        href="/css/portfolio.css"
+    >
+</head>
+
+<body>
+
+<header class="portfolio-header">
+
+    <div class="brand">
+        <span class="brand-icon">R</span>
+        <span>RwhatsApp Marketplace</span>
+    </div>
+
+    <nav>
+        <a href="/marketplace.html">
+            Marketplace
+        </a>
+
+        <a href="/chat.html">
+            Chat
+        </a>
+    </nav>
+
+</header>
+
+<main>
+
+    <section
+        id="loading"
+        class="state"
+    >
+        Loading seller portfolio...
+    </section>
+
+    <section
+        id="errorState"
+        class="state hidden"
+    >
+        Seller portfolio could not be loaded.
+    </section>
+
+    <section
+        id="portfolioContent"
+        class="hidden"
+    >
+
+        <div class="seller-profile">
+
+            <div
+                id="sellerAvatar"
+                class="seller-avatar"
+            >
+                S
+            </div>
+
+            <div class="seller-details">
+
+                <h1 id="sellerName">
+                    Seller
+                </h1>
+
+                <p id="sellerEmail"></p>
+
+                <p id="sellerPhone"></p>
+
+                <button
+                    id="chatSellerButton"
+                    class="primary-button"
+                >
+                    💬 Chat with Seller
+                </button>
+
+                <button
+    id="followSellerButton"
+    class="secondary-button"
+>
+    Follow Seller
+</button>
+
+<p
+    id="followersCount"
+    class="followers-count"
+>
+    0 followers
+</p>
+
+            </div>
+
+        </div>
+
+        <section class="products-section">
+
+            <div class="section-heading">
+
+                <h2>
+                    Seller Products
+                </h2>
+
+                <p id="productCount">
+                    0 products
+                </p>
+
+            </div>
+
+            <div
+                id="productsContainer"
+                class="products-grid"
+            ></div>
+
+            <div
+                id="emptyState"
+                class="state hidden"
+            >
+                This seller has no active products.
+            </div>
+
+        </section>
+
+    </section>
+
+</main>
+
+<script src="/js/portfolio.js"></script>
+
+</body>
+</html>

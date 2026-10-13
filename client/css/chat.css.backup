@@ -1,0 +1,517 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f0f2f5;
+}
+
+.app {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 320px;
+    background: white;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.sidebar-header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+}
+
+#logoutBtn {
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+#userInfo {
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+#conversationList {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.conversation {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+}
+
+.conversation:hover {
+    background: #f5f5f5;
+}
+
+.chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header {
+    height: 65px;
+    background: white;
+    border-bottom: 1px solid #ddd;
+    padding: 15px;
+}
+
+.chat-header h2 {
+    margin: 0;
+}
+
+#messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.message {
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: white;
+    border-radius: 8px;
+    max-width: 60%;
+}
+
+.message.mine {
+    margin-left: auto;
+    background: #d9fdd3;
+}
+
+.message-name {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+#messageForm {
+    display: flex;
+    padding: 15px;
+    background: white;
+    border-top: 1px solid #ddd;
+}
+
+#messageInput {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+#messageForm button {
+    margin-left: 10px;
+    padding: 12px 20px;
+    cursor: pointer;
+}
+
+
+/* =====================================
+   WHATSAPP SIDEBAR
+===================================== */
+
+.sidebar {
+    width: 360px;
+    min-width: 320px;
+    background: #ffffff;
+    border-right: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+
+/* HEADER */
+
+.sidebar-header {
+    height: 64px;
+    padding: 0 16px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    background: #f0f2f5;
+}
+
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.avatar {
+    width: 44px;
+    height: 44px;
+
+    border-radius: 50%;
+
+    background: #dfe5e7;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-weight: 600;
+    color: #54656f;
+
+    text-transform: uppercase;
+}
+
+
+.profile-info {
+    font-size: 15px;
+}
+
+
+.sidebar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+.sidebar-actions button {
+    width: 38px;
+    height: 38px;
+
+    border: none;
+    border-radius: 50%;
+
+    background: transparent;
+
+    font-size: 20px;
+    cursor: pointer;
+
+    color: #54656f;
+}
+
+
+.sidebar-actions button:hover {
+    background: #e2e6e8;
+}
+
+
+/* SEARCH */
+
+.search-box {
+    margin: 8px 12px;
+
+    height: 38px;
+
+    background: #f0f2f5;
+
+    border-radius: 8px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 12px;
+
+    gap: 8px;
+}
+
+
+.search-box span {
+    font-size: 15px;
+}
+
+
+.search-box input {
+    border: none;
+    outline: none;
+
+    background: transparent;
+
+    flex: 1;
+
+    font-size: 14px;
+}
+
+
+/* TABS */
+
+.sidebar-tabs {
+    display: flex;
+
+    border-bottom: 1px solid #ddd;
+
+    background: #ffffff;
+}
+
+
+.sidebar-tab {
+    flex: 1;
+
+    height: 45px;
+
+    border: none;
+
+    background: transparent;
+
+    cursor: pointer;
+
+    font-size: 14px;
+
+    color: #667781;
+
+    position: relative;
+}
+
+
+.sidebar-tab.active {
+    color: #008069;
+    font-weight: 600;
+}
+
+
+.sidebar-tab.active::after {
+    content: "";
+
+    position: absolute;
+
+    bottom: 0;
+    left: 20%;
+    right: 20%;
+
+    height: 3px;
+
+    background: #00a884;
+
+    border-radius: 3px 3px 0 0;
+}
+
+
+/* LIST */
+
+.sidebar-list {
+    flex: 1;
+
+    overflow-y: auto;
+}
+
+
+.sidebar-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+
+.sidebar-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+}
+
+
+/* CONVERSATION */
+
+.conversation {
+    min-height: 72px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 8px 16px;
+
+    border-bottom: 1px solid #f0f2f5;
+
+    cursor: pointer;
+
+    transition: background 0.15s;
+}
+
+
+.conversation:hover {
+    background: #f5f6f6;
+}
+
+
+.conversation-avatar {
+    width: 48px;
+    height: 48px;
+
+    min-width: 48px;
+
+    border-radius: 50%;
+
+    background: #dfe5e7;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #54656f;
+
+    font-weight: 600;
+
+    margin-right: 12px;
+}
+
+
+.conversation-content {
+    flex: 1;
+
+    min-width: 0;
+}
+
+
+.conversation-top {
+    display: flex;
+    justify-content: space-between;
+
+    margin-bottom: 4px;
+}
+
+
+.conversation-name {
+    font-size: 16px;
+
+    font-weight: 500;
+
+    color: #111b21;
+}
+
+
+.conversation-time {
+    font-size: 12px;
+
+    color: #667781;
+}
+
+
+.conversation-preview {
+    font-size: 14px;
+
+    color: #667781;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+}
+
+
+/* CONTACT */
+
+.contact {
+    min-height: 68px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 8px 16px;
+
+    border-bottom: 1px solid #f0f2f5;
+
+    cursor: pointer;
+}
+
+
+.contact:hover {
+    background: #f5f6f6;
+}
+
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.contact-name {
+    font-size: 16px;
+    color: #111b21;
+}
+
+
+.contact-phone {
+    font-size: 13px;
+    color: #667781;
+}
+
+
+/* SEARCH RESULTS */
+
+#searchResults {
+    background: white;
+}
+
+
+.search-user {
+    min-height: 64px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 8px 16px;
+
+    border-bottom: 1px solid #f0f2f5;
+}
+
+
+.search-user button {
+    border: none;
+
+    background: #00a884;
+
+    color: white;
+
+    padding: 7px 14px;
+
+    border-radius: 18px;
+
+    cursor: pointer;
+}
+
+
+.search-user button:hover {
+    background: #008f72;
+}
+
+
+.loading,
+.empty {
+    text-align: center;
+
+    color: #667781;
+
+    padding: 25px 15px;
+
+    font-size: 14px;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 700px) {
+
+    .sidebar {
+        width: 100%;
+        min-width: 100%;
+    }
+
+    .chat {
+        display: none;
+    }
+
+}

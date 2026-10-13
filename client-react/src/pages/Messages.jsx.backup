@@ -1,0 +1,167 @@
+import { useEffect, useState } from 'react'
+import api from '../api'
+import './Workspace.css'
+
+function getId(value) {
+  return String(value?._id || value?.id || value || '')
+}
+
+function getName(user) {
+  return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
+}
+
+export default function Messages() {
+  const [conversations, setConversations] = useState([])
+  const [selected, setSelected] = useState(null)
+  const [messages, setMessages] = useState([])
+  const [text, setText] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const [currentUserId, setCurrentUserId] = useState('')
+
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}')
+      setCurrentUserId(getId(user._id || user.id || user.userId))
+    } catch {
+      setCurrentUserId('')
+    }
+
+    api.get('/conversations')
+      .then(({ data }) => setConversations(data.conversations || []))
+      .catch((err) => setError(err.response?.data?.message || 'Could not load conversations.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function openConversation(conversation) {
+    setSelected(conversation)
+    setMessages([])
+    setError('')
+
+    try {
+      const { data } = await api.get(`/messages/${encodeURIComponent(conversation._id)}`)
+      setMessages(data.messages || [])
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not load messages.')
+    }
+  }
+
+  async function sendMessage(event) {
+    event.preventDefault()
+    if (!selected || !text.trim() || sending) return
+
+    setSending(true)
+    setError('')
+
+    try {
+      const { data } = await api.post('/messages', {
+        conversationId: selected._id,
+        text: text.trim(),
+      })
+      const message = data.data
+      setMessages((previous) => [...previous, message])
+      setText('')
+      setConversations((previous) => previous.map((item) =>
+        item._id === selected._id
+          ? { ...item, lastMessage: message, updatedAt: new Date().toISOString() }
+          : item
+      ))
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not send message.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  function otherParticipant(conversation) {
+    const participants = conversation.participants || []
+    return participants.find((person) => getId(person) !== currentUserId) || participants[0]
+  }
+
+  return (
+    <main className="workspace-page">
+      <header className="workspace-header">
+        <a className="workspace-brand" href="/marketplace">RwhatsApp</a>
+        <nav className="workspace-nav">
+          <a href="/marketplace">Marketplace</a>
+          <a className="active" href="/messages">Messages</a>
+          <a href="/my-orders">My Orders</a>
+          <a href="/my-products">My Products</a>
+        </nav>
+      </header>
+
+      <section className="workspace-content">
+        <div className="workspace-title">
+          <div><p className="workspace-eyebrow">STAY CONNECTED</p><h1>Messages</h1></div>
+        </div>
+
+        {error && <p className="workspace-error" role="alert">{error}</p>}
+
+        <div className="messages-layout">
+          <aside className="conversation-list">
+            <h2>Conversations</h2>
+            {loading && <p className="workspace-muted">Loading conversations...</p>}
+            {!loading && conversations.length === 0 && (
+              <p className="workspace-muted">No conversations yet. Contact a seller from a product page to start chatting.</p>
+            )}
+            {conversations.map((conversation) => {
+              const person = otherParticipant(conversation)
+              return (
+                <button
+                  className={`conversation-item ${selected?._id === conversation._id ? 'selected' : ''}`}
+                  key={conversation._id}
+                  onClick={() => openConversation(conversation)}
+                >
+                  <span className="conversation-avatar">{getName(person).charAt(0).toUpperCase()}</span>
+                  <span className="conversation-copy">
+                    <strong>{getName(person)}</strong>
+                    <small>{conversation.lastMessage?.text || 'Open conversation'}</small>
+                  </span>
+                </button>
+              )
+            })}
+          </aside>
+
+          <section className="message-panel">
+            {!selected ? (
+              <div className="workspace-empty"><span>✉</span><h2>Your messages</h2><p>Select a conversation to read and reply.</p></div>
+            ) : (
+              <>
+                <div className="message-panel-heading">
+                  <h2>{getName(otherParticipant(selected))}</h2>
+                </div>
+                <div className="message-list">
+                  {messages.length === 0 && <p className="workspace-muted">No messages in this conversation yet.</p>}
+                  {messages.map((message) => {
+                    const senderId = getId(message.sender)
+                    const mine = senderId && currentUserId && senderId === currentUserId
+                    return (
+                      <div className={`message-bubble ${mine ? 'mine' : ''}`} key={message._id}>
+                        <p>{message.text}</p>
+                        <small>{message.createdAt ? new Date(message.createdAt).toLocaleString() : ''}</small>
+                      </div>
+                    )
+                  })}
+                </div>
+                <form className="message-compose" onSubmit={sendMessage}>
+                  <input
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    placeholder="Write a message..."
+                    aria-label="Write a message"
+                    maxLength={5000}
+                    required
+                  />
+                  <button type="submit" disabled={sending || !text.trim()}>
+                    {sending ? 'Sending...' : 'Send'}
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
+        </div>
+      </section>
+    </main>
+  )
+}

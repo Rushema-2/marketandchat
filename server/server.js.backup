@@ -1,0 +1,339 @@
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const jwt = require("jsonwebtoken");
+const connectDB = require("./config/db");
+
+const authRoutes = require("./routes/authRoutes");
+const conversationRoutes = require("./routes/conversationRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+
+const Message = require("./models/Message");
+const Conversation = require("./models/Conversation");
+
+dotenv.config();
+
+const app = express();
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+    cors: {
+        origin: "*"
+    }
+});
+
+connectDB();
+
+app.use(cors());
+app.use(express.json());
+
+app.get("/", (req, res) => {
+    res.send("WhatsApp Clone Server is running...");
+});
+
+app.use("/api/auth", authRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/messages", messageRoutes);
+
+
+// ===============================
+// SOCKET.IO
+// ===============================
+
+io.use((socket, next) => {
+    try {
+        const token = socket.handshake.auth?.token;
+
+        if (!token) {
+            return next(
+                new Error("Authentication required")
+            );
+        }
+
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET
+        );
+
+        socket.userId = decoded.userId;
+
+        next();
+
+    } catch (error) {
+        console.error(
+            "Socket authentication error:",
+            error.message
+        );
+
+        next(
+            new Error("Invalid or expired token")
+        );
+    }
+});
+
+
+io.on("connection", (socket) => {
+    console.log(
+        "Authenticated user connected:",
+        socket.id,
+        "user:",
+        socket.userId
+    );
+
+
+    // Join conversation
+    socket.on("joinConversation", async (conversationId) => {
+        try {
+            const conversation = await Conversation.findOne({
+                _id: conversationId,
+                participants: socket.userId
+            });
+
+            if (!conversation) {
+                socket.emit("messageError", {
+                    message: "Conversation not found"
+                });
+
+                return;
+            }
+
+            const room = `conversation:${conversationId}`;
+
+            socket.join(room);
+
+            console.log(
+                `User ${socket.userId} joined ${room}`
+            );
+
+        } catch (error) {
+            console.error(
+                "Join conversation error:",
+                error
+            );
+
+            socket.emit("messageError", {
+                message: "Server error"
+            });
+        }
+    });
+
+
+    // Leave conversation
+    socket.on("leaveConversation", (conversationId) => {
+        const room = `conversation:${conversationId}`;
+
+        socket.leave(room);
+
+        console.log(
+            `User ${socket.userId} left ${room}`
+        );
+    });
+
+
+    // Send message
+    socket.on("sendMessage", async (data) => {
+        try {
+            console.log(
+                "Message received from:",
+                socket.userId,
+                data
+            );
+
+            const {
+                conversationId,
+                text
+            } = data;
+
+
+            if (!conversationId || !text) {
+                socket.emit("messageError", {
+                    message:
+                        "conversationId and text are required"
+                });
+
+                return;
+            }
+
+
+            // Use authenticated user
+            const senderId = socket.userId;
+
+
+            // Check conversation membership
+            const conversation =
+                await Conversation.findOne({
+                    _id: conversationId,
+                    participants: senderId
+                });
+
+
+            if (!conversation) {
+                socket.emit("messageError", {
+                    message: "Conversation not found"
+                });
+
+                return;
+            }
+
+
+            // Save message
+            const message = await Message.create({
+                conversation: conversationId,
+                sender: senderId,
+                text
+            });
+
+
+            // Update last message
+            conversation.lastMessage = message._id;
+
+            await conversation.save();
+
+
+            // Populate sender
+            const populatedMessage =
+                await Message.findById(message._id)
+                    .populate(
+                        "sender",
+                        "firstName lastName email"
+                    );
+
+
+            // Broadcast
+            const room =
+                `conversation:${conversationId}`;
+
+            io.to(room).emit(
+                "newMessage",
+                populatedMessage
+            );
+
+
+        } catch (error) {
+            console.error(
+                "Socket sendMessage error:",
+                error
+            );
+
+            socket.emit("messageError", {
+                message: "Server error"
+            });
+        }
+    });
+
+
+    // Disconnect
+    socket.on("disconnect", () => {
+        console.log(
+            "User disconnected:",
+            socket.id,
+            "user:",
+            socket.userId
+        );
+    });
+});
+
+
+   
+
+
+    // Send message
+    socket.on("sendMessage", async (data) => {
+        try {
+            console.log("Message received:", data);
+
+            const {
+                conversationId,
+                senderId,
+                text
+            } = data;
+
+            if (!conversationId || !senderId || !text) {
+                socket.emit("messageError", {
+                    message:
+                        "conversationId, senderId and text are required"
+                });
+
+                return;
+            }
+
+
+            // Check conversation and participant
+            const conversation = await Conversation.findOne({
+                _id: conversationId,
+                participants: senderId
+            });
+
+            if (!conversation) {
+                socket.emit("messageError", {
+                    message: "Conversation not found"
+                });
+
+                return;
+            }
+
+
+            // Save message
+            const message = await Message.create({
+                conversation: conversationId,
+                sender: senderId,
+                text
+            });
+
+
+            // Update last message
+            conversation.lastMessage = message._id;
+
+            await conversation.save();
+
+
+            // Populate sender information
+            const populatedMessage = await Message.findById(
+                message._id
+            ).populate(
+                "sender",
+                "firstName lastName email"
+            );
+
+
+            // Send message to everyone in conversation
+            const room = `conversation:${conversationId}`;
+
+            io.to(room).emit(
+                "newMessage",
+                populatedMessage
+            );
+
+        } catch (error) {
+            console.error(
+                "Socket sendMessage error:",
+                error
+            );
+
+            socket.emit("messageError", {
+                message: "Server error"
+            });
+        }
+    });
+
+
+    // Disconnect
+    socket.on("disconnect", () => {
+        console.log(
+            "User disconnected:",
+            socket.id
+        );
+    });
+});
+
+
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, () => {
+    console.log(
+        `Server running on http://localhost:${PORT}`
+    );
+});

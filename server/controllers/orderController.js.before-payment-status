@@ -1,0 +1,199 @@
+const Order = require("../models/Order");
+const Product = require("../models/Product");
+const User = require("../models/User");
+const { requestToPay } = require("../services/momoService");
+
+const COMMISSION_RATE = 5;
+
+const createOrder = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+
+        const {
+            productId,
+            quantity
+        } = req.body;
+
+        if (!productId || !quantity) {
+            return res.status(400).json({
+                message: "Product and quantity are required"
+            });
+        }
+
+        const requestedQuantity = Number(quantity);
+
+        if (
+            !Number.isInteger(requestedQuantity) ||
+            requestedQuantity < 1
+        ) {
+            return res.status(400).json({
+                message: "Quantity must be a positive integer"
+            });
+        }
+
+        const product = await Product.findById(productId);
+
+        if (!product) {
+            return res.status(404).json({
+                message: "Product not found"
+            });
+        }
+
+        if (product.status !== "active") {
+            return res.status(400).json({
+                message: "Product is not available"
+            });
+        }
+
+        if (String(product.seller) === String(buyerId)) {
+            return res.status(400).json({
+                message: "You cannot buy your own product"
+            });
+        }
+
+        if (product.stock < requestedQuantity) {
+            return res.status(400).json({
+                message: "Not enough stock available"
+            });
+        }
+
+        const unitPrice = product.price;
+
+        const totalAmount =
+            unitPrice * requestedQuantity;
+
+        const commissionAmount =
+            Math.round(
+                totalAmount * COMMISSION_RATE / 100
+            );
+
+        const sellerAmount =
+            totalAmount - commissionAmount;
+
+        const order = await Order.create({
+            buyer: buyerId,
+            seller: product.seller,
+            product: product._id,
+            quantity: requestedQuantity,
+            unitPrice,
+            totalAmount,
+            currency: product.currency || "RWF",
+            commissionRate: COMMISSION_RATE,
+            commissionAmount,
+            sellerAmount,
+            status: "pending"
+        });
+
+        return res.status(201).json({
+            message: "Order created successfully",
+            order
+        });
+
+    } catch (error) {
+        console.error(
+            "Create order error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to create order"
+        });
+    }
+};
+
+const payOrder = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+        const { orderId } = req.params;
+
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({
+                message: "Order not found"
+            });
+        }
+
+        if (String(order.buyer) !== String(buyerId)) {
+            return res.status(403).json({
+                message: "You are not allowed to pay for this order"
+            });
+        }
+
+        if (order.status !== "pending") {
+            return res.status(400).json({
+                message: "Order is not pending"
+            });
+        }
+
+        if (order.paymentStatus === "successful") {
+            return res.status(400).json({
+                message: "Order has already been paid"
+            });
+        }
+
+        const product = await Product.findById(order.product);
+
+        if (!product) {
+            return res.status(404).json({
+                message: "Product not found"
+            });
+        }
+
+        if (product.status !== "active") {
+            return res.status(400).json({
+                message: "Product is no longer available"
+            });
+        }
+
+        if (product.stock < order.quantity) {
+            return res.status(400).json({
+                message: "Not enough stock available"
+            });
+        }
+
+        const buyer = await User.findById(buyerId);
+
+        if (!buyer || !buyer.phone) {
+            return res.status(400).json({
+                message: "Buyer phone number is required for payment"
+            });
+        }
+
+        const payment = await requestToPay({
+            amount: order.totalAmount,
+            currency: order.currency || "RWF",
+            externalId: order._id,
+            payerPhone: buyer.phone
+        });
+
+        order.paymentProvider = "mtn_momo";
+        order.paymentReference = payment.referenceId;
+        order.paymentStatus = "pending";
+
+        await order.save();
+
+        return res.status(200).json({
+            message: "Payment request sent successfully",
+            orderId: order._id,
+            paymentReference: payment.referenceId,
+            paymentStatus: order.paymentStatus,
+            paymentProvider: order.paymentProvider
+        });
+
+    } catch (error) {
+        console.error(
+            "Pay order error:",
+            error
+        );
+
+        return res.status(500).json({
+            message: "Failed to initiate payment"
+        });
+    }
+};
+
+module.exports = {
+    createOrder,
+    payOrder
+};
