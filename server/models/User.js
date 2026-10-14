@@ -42,6 +42,11 @@ resetPasswordToken: {
 resetPasswordExpires: {
     type: Date,
     default: null
+},
+
+lastSeen: {
+    type: Date,
+    default: null
 }
 
     },
