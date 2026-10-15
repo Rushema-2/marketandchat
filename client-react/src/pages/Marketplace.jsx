@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import api from '../api'
 import './Marketplace.css'
 
-const API_ORIGIN = import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'
+const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || 'https://marketandchat.onrender.com').replace(/\/$/, '')
 
 const categories = [
   { value: 'all', label: 'All categories' },
