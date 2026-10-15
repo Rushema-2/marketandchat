@@ -242,7 +242,7 @@ const [selectedVideo, setSelectedVideo] = useState(null);
             {products.map((product) => (
               <article className="my-product-card" key={product._id}>
                 {product.images?.[0] ? (
-                  <img src={`${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`} alt={product.title} />
+                  <img src={/^https?:\/\//i.test(product.images[0]) ? product.images[0] : `${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`} alt={product.title} />
                 ) : <div className="my-product-placeholder">No image available</div>}
                 <div className="my-product-info">
                   <span className="product-category-label">{String(product.category || 'other').replace(/_/g, ' ')}</span>

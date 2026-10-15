@@ -62,7 +62,7 @@ export default function MyOrders() {
                   </div>
                   <div className="order-card-body">
                     {product.images?.[0] ? (
-                      <img className="order-image" src={`${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`} alt={product.title || 'Product'} />
+                      <img className="order-image" src={/^https?:\/\//i.test(product.images[0]) ? product.images[0] : `${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`} alt={product.title || 'Product'} />
                     ) : <div className="order-image order-image-placeholder">No image</div>}
                     <div className="order-product-info">
                       <h2>{product.title || 'Product unavailable'}</h2>

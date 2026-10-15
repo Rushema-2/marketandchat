@@ -165,7 +165,9 @@ function Marketplace() {
               {filteredProducts.map((product) => {
                 const imagePath = product.images?.[0]
                 const imageUrl = imagePath
-                  ? `${API_ORIGIN}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`
+                  ? (/^https?:\/\//i.test(imagePath)
+                      ? imagePath
+                      : `${API_ORIGIN}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`)
                   : ''
 
                 return (

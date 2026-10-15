@@ -17,16 +17,12 @@ router.post(
             }
 
             const files = req.files.map((file) => {
-                const folder = file.mimetype.startsWith("image/")
-                    ? "images"
-                    : "videos";
-
                 return {
                     originalName: file.originalname,
                     filename: file.filename,
                     mimetype: file.mimetype,
                     size: file.size,
-                    url: `/uploads/${folder}/${file.filename}`
+                    url: file.path
                 };
             });
 

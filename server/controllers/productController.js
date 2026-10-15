@@ -34,7 +34,7 @@ const createProduct = async (req, res) => {
         }
 
         const uploadedImages = (req.files?.images || []).map(
-    (file) => `/uploads/images/${file.filename}`
+    (file) => file.path
 );
 
 const uploadedVideo = req.files?.video?.[0];
@@ -45,7 +45,7 @@ const productImages = [
 ];
 
 const productVideo = uploadedVideo
-    ? `/uploads/videos/${uploadedVideo.filename}`
+    ? uploadedVideo.path
     : (video || null);
 
 const product = await Product.create({
@@ -359,7 +359,7 @@ const updateProduct = async (req, res) => {
         });
 
         const uploadedImages = (req.files?.images || []).map(
-    (file) => `/uploads/images/${file.filename}`
+    (file) => file.path
 );
 
 if (uploadedImages.length > 0) {
@@ -372,7 +372,7 @@ if (uploadedImages.length > 0) {
 const uploadedVideo = req.files?.video?.[0];
 
 if (uploadedVideo) {
-    product.video = `/uploads/videos/${uploadedVideo.filename}`;
+    product.video = uploadedVideo.path;
 }
 
         await product.save();

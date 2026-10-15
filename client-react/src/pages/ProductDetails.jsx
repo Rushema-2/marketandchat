@@ -189,12 +189,16 @@ function ProductDetails() {
 
   const imagePath = product.images?.[0]
   const imageUrl = imagePath
-    ? `${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`
+    ? (/^https?:\/\//i.test(imagePath)
+        ? imagePath
+        : `${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`)
     : ''
 
     const videoPath = product.video
 const videoUrl = videoPath
-  ? `${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${videoPath.startsWith('/') ? '' : '/'}${videoPath}`
+  ? (/^https?:\/\//i.test(videoPath)
+      ? videoPath
+      : `${import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'}${videoPath.startsWith('/') ? '' : '/'}${videoPath}`)
   : ''
 
   const stock = Number(product.stock)
