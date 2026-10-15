@@ -1,31 +1,32 @@
-const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+require("dotenv").config({
+    path: path.join(__dirname, "../.env"),
+    override: true
+});
 
-const imagesDir = path.join(__dirname, "../../client/uploads/images");
-const videosDir = path.join(__dirname, "../../client/uploads/videos");
+const multer = require("multer");
+const { v2: cloudinary } = require("cloudinary");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-fs.mkdirSync(imagesDir, { recursive: true });
-fs.mkdirSync(videosDir, { recursive: true });
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        if (file.mimetype.startsWith("image/")) {
-            cb(null, imagesDir);
-        } else if (file.mimetype.startsWith("video/")) {
-            cb(null, videosDir);
-        } else {
-            cb(new Error("Only image and video files are allowed"));
-        }
-    },
+const storage = new CloudinaryStorage({
+    cloudinary,
+    params: async (req, file) => {
+        const isVideo = file.mimetype.startsWith("video/");
 
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-
-        const uniqueName =
-            `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-
-        cb(null, uniqueName);
+        return {
+            folder: isVideo ? "rwhatsapp/videos" : "rwhatsapp/images",
+            resource_type: isVideo ? "video" : "image",
+            public_id: `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
+            allowed_formats: isVideo
+                ? ["mp4", "mov", "webm", "avi"]
+                : ["jpg", "jpeg", "png", "webp", "gif"]
+        };
     }
 });
 
@@ -34,10 +35,10 @@ const fileFilter = (req, file, cb) => {
         file.mimetype.startsWith("image/") ||
         file.mimetype.startsWith("video/")
     ) {
-        cb(null, true);
-    } else {
-        cb(new Error("Only image and video files are allowed"), false);
+        return cb(null, true);
     }
+
+    return cb(new Error("Only image and video files are allowed"), false);
 };
 
 const upload = multer({

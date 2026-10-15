@@ -1,0 +1,9 @@
+{
+  "name": "whatsapp-r",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix server start",
+    "dev": "npm --prefix server run dev"
+  }
+}
