@@ -78,6 +78,15 @@ app.use( "/api/notifications", notificationRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/orders", orderRoutes);
 
+// React Router fallback: serve the React app for frontend routes
+app.get("/{*path}", (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/uploads/")) {
+        return next();
+    }
+    res.sendFile(path.join(reactBuildPath, "index.html"));
+});
+
+
 // ========================================
 // SOCKET.IO JWT AUTHENTICATION
 // ========================================
