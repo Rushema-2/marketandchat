@@ -55,8 +55,13 @@ app.use(
     )
 );
 
+// Serve the React production frontend
+const reactBuildPath = path.join(__dirname, "../client-react/dist");
+
+app.use(express.static(reactBuildPath));
+
 app.get("/", (req, res) => {
-    res.send("RwhatsApp Server is running...");
+    res.sendFile(path.join(reactBuildPath, "index.html"));
 });
 
 app.use("/api/auth", authRoutes);
