@@ -20,7 +20,7 @@ function formatPrice(price, currency = 'RWF') {
     maximumFractionDigits: 0,
   }).format(Number(price) || 0)
 
-  return `${amount} RWF`
+  return `${amount} ${currency || 'RWF'}`
 }
 
 function Marketplace() {

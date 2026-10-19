@@ -136,6 +136,17 @@ const payOrder = async (req, res) => {
             });
         }
 
+        if (order.paymentReference && order.paymentStatus === "pending") {
+            return res.status(200).json({
+                message: "A payment request already exists for this order",
+                orderId: order._id,
+                paymentReference: order.paymentReference,
+                paymentStatus: order.paymentStatus,
+                paymentProvider: order.paymentProvider,
+                alreadyInitiated: true
+            });
+        }
+
         const product = await Product.findById(order.product);
 
         if (!product) {

@@ -23,6 +23,8 @@ function ProductDetails() {
   const [contacting, setContacting] = useState(false)
   const [ordering, setOrdering] = useState(false)
   const [orderResult, setOrderResult] = useState(null)
+  const [paying, setPaying] = useState(false)
+  const [paymentResult, setPaymentResult] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -47,10 +49,7 @@ function ProductDetails() {
       }
     }
 
-    if (!id) {
-      setError('Product ID is missing.')
-      setLoading(false)
-    } else {
+    if (id) {
       loadProduct()
     }
 
@@ -111,6 +110,7 @@ function ProductDetails() {
     setActionError('')
     setActionMessage('')
     setOrderResult(null)
+    setPaymentResult(null)
 
     if (!requireLogin()) return
 
@@ -159,7 +159,40 @@ function ProductDetails() {
     }
   }
 
-  if (loading) {
+  async function handlePayOrder() {
+    setActionError('')
+    setActionMessage('')
+
+    if (!requireLogin()) return
+    if (!orderResult?._id) {
+      setActionError('Create an order before requesting payment.')
+      return
+    }
+    if (paymentResult?.paymentReference) {
+      setActionError('A payment request already exists for this order.')
+      return
+    }
+
+    setPaying(true)
+    try {
+      const response = await api.post(
+        `/orders/${encodeURIComponent(orderResult._id)}/pay`
+      )
+      setPaymentResult(response.data)
+      setActionMessage(
+        'MTN MoMo sandbox payment request submitted. This does not confirm that payment was completed.'
+      )
+    } catch (err) {
+      setActionError(
+        err.response?.data?.message ||
+        'Could not submit the payment request. Please check the order before trying again.'
+      )
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  if (id && loading) {
     return (
       <main className="product-details-page">
         <p>Loading product...</p>
@@ -167,7 +200,7 @@ function ProductDetails() {
     )
   }
 
-  if (error || !product) {
+  if (!id || error || !product) {
     return (
       <main className="product-details-page">
         <button className="details-back" onClick={() => navigate('/marketplace')}>
@@ -175,7 +208,7 @@ function ProductDetails() {
         </button>
         <section className="details-message">
           <h1>Product unavailable</h1>
-          <p>{error || 'This product could not be found.'}</p>
+          <p>{!id ? 'Product ID is missing.' : error || 'This product could not be found.'}</p>
           <button onClick={() => navigate('/marketplace')}>Browse products</button>
         </section>
       </main>
@@ -283,6 +316,7 @@ const videoUrl = videoPath
                 setActionError('')
                 setActionMessage('')
                 setOrderResult(null)
+                setPaymentResult(null)
               }}
               disabled={!inStock || ordering || isSeller}
             />
@@ -319,8 +353,36 @@ const videoUrl = videoPath
               <p>Order reference: {orderResult._id}</p>
               <p>Quantity: {orderResult.quantity}</p>
               <p>Total: {formatPrice(orderResult.totalAmount)}</p>
-              <p>Status: {orderResult.status || 'pending'}</p>
-              <p>Payment has not been started. You have not been charged.</p>
+              <p>Order status: {orderResult.status || 'pending'}</p>
+
+              {!paymentResult && (
+                <>
+                  <p>Payment has not been started. You have not been charged.</p>
+                  <button
+                    type="button"
+                    className="details-buy-button"
+                    onClick={handlePayOrder}
+                    disabled={paying || ordering}
+                  >
+                    {paying ? 'Submitting payment request...' : 'Pay with MTN MoMo (Sandbox)'}
+                  </button>
+                </>
+              )}
+
+              {paymentResult && (
+                <div className="details-payment-result">
+                  <h4>Payment request submitted</h4>
+                  <p>Provider: MTN MoMo sandbox</p>
+                  {paymentResult.paymentReference && (
+                    <p>Payment reference: {paymentResult.paymentReference}</p>
+                  )}
+                  <p>Request status: {paymentResult.paymentStatus || 'pending'}</p>
+                  <p>
+                    Sandbox testing only. This is not confirmation of a completed
+                    payment, and the order is not confirmed as paid.
+                  </p>
+                </div>
+              )}
             </section>
           )}
 

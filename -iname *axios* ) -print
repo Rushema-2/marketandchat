@@ -1,0 +1,43 @@
+[1mdiff --git a/client-react/src/pages/ProductDetails.jsx b/client-react/src/pages/ProductDetails.jsx[m
+[1mindex 79784b4..ab3bce2 100644[m
+[1m--- a/client-react/src/pages/ProductDetails.jsx[m
+[1m+++ b/client-react/src/pages/ProductDetails.jsx[m
+[36m@@ -47,10 +47,7 @@[m [mfunction ProductDetails() {[m
+       }[m
+     }[m
+ [m
+[31m-    if (!id) {[m
+[31m-      setError('Product ID is missing.')[m
+[31m-      setLoading(false)[m
+[31m-    } else {[m
+[32m+[m[32m    if (id) {[m
+       loadProduct()[m
+     }[m
+ [m
+[36m@@ -159,7 +156,7 @@[m [mfunction ProductDetails() {[m
+     }[m
+   }[m
+ [m
+[31m-  if (loading) {[m
+[32m+[m[32m  if (id && loading) {[m
+     return ([m
+       <main className="product-details-page">[m
+         <p>Loading product...</p>[m
+[36m@@ -167,7 +164,7 @@[m [mfunction ProductDetails() {[m
+     )[m
+   }[m
+ [m
+[31m-  if (error || !product) {[m
+[32m+[m[32m  if (!id || error || !product) {[m
+     return ([m
+       <main className="product-details-page">[m
+         <button className="details-back" onClick={() => navigate('/marketplace')}>[m
+[36m@@ -175,7 +172,7 @@[m [mfunction ProductDetails() {[m
+         </button>[m
+         <section className="details-message">[m
+           <h1>Product unavailable</h1>[m
+[31m-          <p>{error || 'This product could not be found.'}</p>[m
+[32m+[m[32m          <p>{!id ? 'Product ID is missing.' : error || 'This product could not be found.'}</p>[m
+           <button onClick={() => navigate('/marketplace')}>Browse products</button>[m
+         </section>[m
+       </main>[m

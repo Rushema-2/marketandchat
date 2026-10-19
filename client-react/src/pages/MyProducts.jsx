@@ -44,7 +44,32 @@ const [selectedVideo, setSelectedVideo] = useState(null);
     }
   }
 
-  useEffect(() => { loadProducts() }, [])
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadInitialProducts() {
+      try {
+        const { data } = await api.get('/products/seller/me/products')
+        if (!cancelled) {
+          setProducts(data.products || [])
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.message || 'Could not load your products.')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadInitialProducts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function changeField(event) {
     setForm((previous) => ({ ...previous, [event.target.name]: event.target.value }))

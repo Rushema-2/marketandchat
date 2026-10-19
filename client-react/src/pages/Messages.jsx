@@ -12,6 +12,20 @@ function getName(user) {
   return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
 }
 
+function getCurrentUserId() {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    return getId(user._id || user.id || user.userId)
+  } catch {
+    return ''
+  }
+}
+
+function otherParticipant(conversation, currentUserId) {
+  const participants = conversation?.participants || []
+  return participants.find((person) => getId(person) !== currentUserId) || participants[0]
+}
+
 export default function Messages() {
   const [conversations, setConversations] = useState([])
   const [selected, setSelected] = useState(null)
@@ -20,31 +34,28 @@ export default function Messages() {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
-  const [currentUserId, setCurrentUserId] = useState('')
+  const hasToken = Boolean(localStorage.getItem('token'))
+  const currentUserId = getCurrentUserId()
   const [onlineUserIds, setOnlineUserIds] = useState([])
   const [typingUserId, setTypingUserId] = useState('')
 const typingTimerRef = useRef(null)
 
   const socketRef = useRef(null)
   const selectedRef = useRef(null)
+  const currentUserIdRef = useRef(currentUserId)
 
   useEffect(() => {
     selectedRef.current = selected
   }, [selected])
 
   useEffect(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem('user') || '{}')
-      setCurrentUserId(getId(user._id || user.id || user.userId))
-    } catch {
-      setCurrentUserId('')
-    }
+    currentUserIdRef.current = currentUserId
+  }, [currentUserId])
 
+  useEffect(() => {
     const token = localStorage.getItem('token')
 
     if (!token) {
-      setError('Please sign in to use messages.')
-      setLoading(false)
       return
     }
 
@@ -63,7 +74,7 @@ const typingTimerRef = useRef(null)
 
     socket.on('userTyping', ({ userId, conversationId }) => {
   if (
-    String(userId) !== String(currentUserId) &&
+    String(userId) !== String(currentUserIdRef.current) &&
     String(conversationId) === String(selectedRef.current?._id)
   ) {
     setTypingUserId(String(userId))
@@ -73,7 +84,7 @@ const typingTimerRef = useRef(null)
 socket.on('userStoppedTyping', ({ userId, conversationId }) => {
   if (
     String(conversationId) === String(selectedRef.current?._id) &&
-    String(userId) === String(otherParticipant(selectedRef.current)?._id)
+    String(userId) === String(otherParticipant(selectedRef.current, currentUserIdRef.current)?._id)
   ) {
     setTypingUserId('')
   }
@@ -225,9 +236,16 @@ socket.on('userOffline', ({ userId }) => {
     setSending(false)
   }
 
-  function otherParticipant(conversation) {
-    const participants = conversation.participants || []
-    return participants.find((person) => getId(person) !== currentUserId) || participants[0]
+  if (!hasToken) {
+    return (
+      <main className="workspace-page">
+        <section className="workspace-panel">
+          <p className="workspace-error" role="alert">
+            Please sign in to use messages.
+          </p>
+        </section>
+      </main>
+    )
   }
 
   return (
@@ -265,7 +283,7 @@ socket.on('userOffline', ({ userId }) => {
             )}
 
             {conversations.map((conversation) => {
-              const person = otherParticipant(conversation)
+              const person = otherParticipant(conversation, currentUserId)
 
               return (
                 <button
@@ -278,10 +296,6 @@ socket.on('userOffline', ({ userId }) => {
                   <span className="conversation-avatar">
                     {getName(person).charAt(0).toUpperCase()}
                   </span>
-
-<span className="conversation-avatar">
-  {getName(person).charAt(0).toUpperCase()}
-</span>
 <span className="conversation-copy">
   <strong>{getName(person)}</strong>
   <small className="presence-status">
@@ -311,8 +325,8 @@ socket.on('userOffline', ({ userId }) => {
               <>
                 <div className="message-panel-heading">
   <div>
-    <h2>{getName(otherParticipant(selected))}</h2>
-    {typingUserId === getId(otherParticipant(selected)) && (
+    <h2>{getName(otherParticipant(selected, currentUserId))}</h2>
+    {typingUserId === getId(otherParticipant(selected, currentUserId)) && (
       <small className="typing-indicator">Typing...</small>
     )}
   </div>
