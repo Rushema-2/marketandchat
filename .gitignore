@@ -1,0 +1,19 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/.env.example
+
+# Local secret backups
+*.env.backup
+*.env.local.backup
+*.env.save
+*.env.*.backup
+
+# Dependencies and generated files
+node_modules/
+**/node_modules/
+dist/
+**/dist/
