@@ -95,7 +95,7 @@ function ProductDetails() {
       // Open it only after confirming that the conversation can be opened.
       await api.post('/conversations', { userId: sellerId })
       window.location.href =
-        `http://localhost:3000/chat.html?seller=${encodeURIComponent(sellerId)}`
+        `/messages?seller=${encodeURIComponent(sellerId)}`
     } catch (err) {
       setActionError(
         err.response?.data?.message ||

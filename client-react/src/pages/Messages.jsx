@@ -1,5 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import api from '../api'
 import './Workspace.css'
@@ -27,6 +28,10 @@ function otherParticipant(conversation, currentUserId) {
 }
 
 export default function Messages() {
+  const [searchParams] = useSearchParams()
+  const requestedSellerId = searchParams.get('seller')
+  const openedSellerRef = useRef('')
+
   const [conversations, setConversations] = useState([])
   const [selected, setSelected] = useState(null)
   const [messages, setMessages] = useState([])
@@ -210,6 +215,22 @@ socket.on('userOffline', ({ userId }) => {
       setError(err.response?.data?.message || 'Could not load messages.')
     }
   }
+
+  useEffect(() => {
+    if (!requestedSellerId || !conversations.length) return
+    if (openedSellerRef.current === requestedSellerId) return
+
+    const conversation = conversations.find((item) =>
+      (item.participants || []).some(
+        (person) => getId(person) === String(requestedSellerId)
+      )
+    )
+
+    if (conversation) {
+      openedSellerRef.current = requestedSellerId
+      openConversation(conversation)
+    }
+  }, [conversations, requestedSellerId])
 
   function sendMessage(event) {
     event.preventDefault()
