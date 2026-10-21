@@ -65,8 +65,9 @@ const typingTimerRef = useRef(null)
     }
 
     const socketOrigin =
-      import.meta.env.VITE_API_ORIGIN ||
-      `${window.location.protocol}//${window.location.hostname}:3000`
+  window.location.port === '5173'
+    ? (import.meta.env.VITE_API_ORIGIN || `${window.location.protocol}//${window.location.hostname}:3000`)
+    : window.location.origin
 
     const socket = io(socketOrigin, {
       auth: { token },
