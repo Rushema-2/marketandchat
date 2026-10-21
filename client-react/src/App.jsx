@@ -4,10 +4,13 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { loginUser } from './services/authService'
 import Register from './components/Register'
 import Marketplace from './pages/Marketplace'
+import Favorites from './pages/Favorites'
 import ProductDetails from './pages/ProductDetails'
+import SellerStore from './pages/SellerStore'
 import Messages from './pages/Messages'
 import MyOrders from './pages/MyOrders'
 import MyProducts from './pages/MyProducts'
+import Notifications from './pages/Notifications'
 import './App.css'
 
 function LoginPage() {
@@ -136,8 +139,11 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/favorites" element={<Favorites />} />
         <Route path="/product/:id" element={<ProductDetails />} />
+          <Route path="/store/:sellerId" element={<SellerStore />} />
         <Route path="/messages" element={<Messages />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/my-products" element={<MyProducts />} />
         <Route path="*" element={<Navigate to="/" replace />} />

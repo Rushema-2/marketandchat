@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import api from '../api'
+import NotificationBell from '../components/NotificationBell'
 import './Marketplace.css'
 
 const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || 'https://marketandchat.onrender.com').replace(/\/$/, '')
@@ -29,6 +30,8 @@ function Marketplace() {
   const [category, setCategory] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [favoriteIds, setFavoriteIds] = useState([])
+  const [favoriteBusy, setFavoriteBusy] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -57,6 +60,75 @@ function Marketplace() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!localStorage.getItem('token')) return
+
+    let cancelled = false
+
+    async function loadFavoriteIds() {
+      try {
+        const response = await api.get('/favorites')
+        if (!cancelled) {
+          setFavoriteIds(
+            (response.data.favorites || [])
+              .map((favorite) => favorite.product?._id)
+              .filter(Boolean)
+          )
+        }
+      } catch (err) {
+        console.error('Could not load favorite IDs:', err)
+      }
+    }
+
+    loadFavoriteIds()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function toggleFavorite(productId) {
+    if (!localStorage.getItem('token')) {
+      window.alert('Please sign in to save favorites.')
+      window.location.href = '/'
+      return
+    }
+
+    if (favoriteBusy[productId]) return
+
+    const wasFavorite = favoriteIds.includes(productId)
+
+    setFavoriteBusy((current) => ({ ...current, [productId]: true }))
+    setFavoriteIds((current) =>
+      wasFavorite
+        ? current.filter((id) => id !== productId)
+        : [...current, productId]
+    )
+
+    try {
+      if (wasFavorite) {
+        await api.delete(`/favorites/${encodeURIComponent(productId)}`)
+      } else {
+        await api.post(`/favorites/${encodeURIComponent(productId)}`)
+      }
+    } catch (err) {
+      setFavoriteIds((current) =>
+        wasFavorite
+          ? [...new Set([...current, productId])]
+          : current.filter((id) => id !== productId)
+      )
+      window.alert(
+        err.response?.data?.message ||
+        'Could not update favorites. Please try again.'
+      )
+    } finally {
+      setFavoriteBusy((current) => {
+        const next = { ...current }
+        delete next[productId]
+        return next
+      })
+    }
+  }
 
   const filteredProducts = products.filter((product) => {
     const query = search.trim().toLowerCase()
@@ -91,6 +163,8 @@ function Marketplace() {
         <nav className="market-nav" aria-label="Main navigation">
           <a className="active" href="/marketplace">Marketplace</a>
           <a href="/messages">Messages</a>
+          <a href="/favorites">❤️ Favorites</a>
+          <NotificationBell />
           <a href="/my-orders">My orders</a>
           <a href="/my-products">My products</a>
         </nav>
@@ -198,6 +272,17 @@ function Marketplace() {
                       )}
                     </a>
 
+                    <button
+                      type="button"
+                      className={`favorite-button ${favoriteIds.includes(product._id) ? 'is-favorite' : ''}`}
+                      aria-label={favoriteIds.includes(product._id) ? 'Remove from favorites' : 'Add to favorites'}
+                      aria-pressed={favoriteIds.includes(product._id)}
+                      disabled={Boolean(favoriteBusy[product._id])}
+                      onClick={() => toggleFavorite(product._id)}
+                    >
+                      {favoriteIds.includes(product._id) ? '♥' : '♡'}
+                    </button>
+
                     <div className="product-info">
                       <p className="product-category">
                         {String(product.category || 'Other').replace(/_/g, ' ')}
@@ -222,6 +307,14 @@ function Marketplace() {
                           ? `${product.seller.firstName || ''} ${product.seller.lastName || ''}`.trim()
                           : 'Seller'}
                       </p>
+                      {(product.seller?._id || product.seller?.id) && (
+                        <a
+                          className="seller-store-card-link"
+                          href={`/store/${product.seller._id || product.seller.id}`}
+                        >
+                          View seller store →
+                        </a>
+                      )}
                     </div>
                   </article>
                 )

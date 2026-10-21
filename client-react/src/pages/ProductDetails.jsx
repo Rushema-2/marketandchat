@@ -219,6 +219,7 @@ function ProductDetails() {
     product.seller?.firstName,
     product.seller?.lastName,
   ].filter(Boolean).join(' ') || 'Seller'
+  const sellerId = product.seller?._id || product.seller?.id
 
   const imagePath = product.images?.[0]
   const imageUrl = imagePath
@@ -286,6 +287,11 @@ const videoUrl = videoPath
           <div className="details-divider" />
           <h2>Seller information</h2>
           <p className="details-seller">{sellerName}</p>
+          {sellerId && (
+            <a className="details-store-link" href={`/store/${sellerId}`}>
+              View seller store →
+            </a>
+          )}
           <p className="details-stock">
             {inStock ? `${stock} available` : 'Out of stock or availability unconfirmed'}
           </p>

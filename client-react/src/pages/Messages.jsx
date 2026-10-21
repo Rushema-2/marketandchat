@@ -64,11 +64,17 @@ const typingTimerRef = useRef(null)
       return
     }
 
-    const socketOrigin =
-  window.location.port === '5173'
-    ? (import.meta.env.VITE_API_ORIGIN ||
-       `${window.location.protocol}//${window.location.hostname}:3000`)
-    : 'https://marketandchat.onrender.com'
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(
+      window.location.hostname
+    )
+
+    const socketOrigin = isLocalHost
+      ? (window.location.port === '5173'
+          ? (import.meta.env.VITE_API_ORIGIN ||
+             `${window.location.protocol}//${window.location.hostname}:3000`)
+          : window.location.origin)
+      : (import.meta.env.VITE_API_ORIGIN ||
+         'https://marketandchat.onrender.com')
 
 
     const socket = io(socketOrigin, {

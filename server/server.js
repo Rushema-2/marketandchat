@@ -15,6 +15,7 @@ const productRoutes = require("./routes/productRoutes");
 const promotionRoutes = require("./routes/promotionRoutes");
 const promotionPaymentRoutes = require("./routes/promotionPaymentRoutes");
 const productLikeRoutes = require("./routes/productLikeRoutes");
+const favoriteRoutes = require("./routes/favoriteRoutes");
 const followRoutes = require("./routes/followRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
@@ -22,6 +23,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const path = require("path");
 const Message = require("./models/Message");
 const Conversation = require("./models/Conversation");
+const Notification = require("./models/Notification");
 
 dotenv.config({
     path: path.join(__dirname, ".env"),
@@ -70,6 +72,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/contacts", contactRoutes);
 app.use("/api/product-likes", productLikeRoutes);
+app.use("/api/favorites", favoriteRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/promotions", promotionRoutes);
 app.use("/api/promotions", promotionPaymentRoutes);
@@ -364,6 +367,53 @@ socket.on("stopTyping", ({ conversationId } = {}) => {
                     "newMessage",
                     populatedMessage
                 );
+
+                // Create and deliver notifications separately from message delivery.
+                // Notification failure must not make a successfully saved message fail.
+                try {
+                    const sender = populatedMessage?.sender;
+                    const senderName = [sender?.firstName, sender?.lastName]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim() || sender?.email || "Someone";
+
+                    const recipients = conversation.participants.filter(
+                        participantId =>
+                            String(participantId) !== String(senderId)
+                    );
+
+                    for (const recipientId of recipients) {
+                        const notification = await Notification.create({
+                            recipient: recipientId,
+                            sender: senderId,
+                            type: "message",
+                            message: `New message from ${senderName}`,
+                            relatedId: conversation._id
+                        });
+
+                        const populatedNotification = await Notification
+                            .findById(notification._id)
+                            .populate("sender", "firstName lastName email");
+
+                        const recipientSockets = onlineUsers.get(
+                            String(recipientId)
+                        );
+
+                        if (recipientSockets) {
+                            for (const recipientSocketId of recipientSockets) {
+                                io.to(recipientSocketId).emit(
+                                    "newNotification",
+                                    populatedNotification
+                                );
+                            }
+                        }
+                    }
+                } catch (notificationError) {
+                    console.error(
+                        "Create message notification error:",
+                        notificationError
+                    );
+                }
 
 
             } catch (error) {

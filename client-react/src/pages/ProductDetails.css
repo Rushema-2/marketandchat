@@ -259,3 +259,15 @@
   border-radius: 12px;
   background: #000;
 }
+
+.details-store-link {
+  display: inline-block;
+  margin: 4px 0 12px;
+  color: #147d64;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.details-store-link:hover {
+  text-decoration: underline;
+}
