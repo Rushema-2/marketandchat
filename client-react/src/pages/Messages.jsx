@@ -66,8 +66,10 @@ const typingTimerRef = useRef(null)
 
     const socketOrigin =
   window.location.port === '5173'
-    ? (import.meta.env.VITE_API_ORIGIN || `${window.location.protocol}//${window.location.hostname}:3000`)
-    : window.location.origin
+    ? (import.meta.env.VITE_API_ORIGIN ||
+       `${window.location.protocol}//${window.location.hostname}:3000`)
+    : 'https://marketandchat.onrender.com'
+
 
     const socket = io(socketOrigin, {
       auth: { token },
