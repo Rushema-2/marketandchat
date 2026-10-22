@@ -25,6 +25,21 @@ function ProductDetails() {
   const [orderResult, setOrderResult] = useState(null)
   const [paying, setPaying] = useState(false)
   const [paymentResult, setPaymentResult] = useState(null)
+  const [reviewsData, setReviewsData] = useState({
+    reviews: [],
+    averageRating: 0,
+    reviewCount: 0,
+    myReview: null,
+    eligibleOrders: [],
+    canReview: false,
+  })
+  const [reviewsLoading, setReviewsLoading] = useState(true)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewOrderId, setReviewOrderId] = useState('')
+  const [reviewSaving, setReviewSaving] = useState(false)
+  const [reviewError, setReviewError] = useState('')
+  const [reviewMessage, setReviewMessage] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -52,6 +67,61 @@ function ProductDetails() {
     if (id) {
       loadProduct()
     }
+
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadReviews() {
+      setReviewsLoading(true)
+      setReviewError('')
+
+      try {
+        const response = await api.get(
+          `/reviews/product/${encodeURIComponent(id || '')}`
+        )
+        if (cancelled) return
+
+        const data = response.data || {}
+        const nextData = {
+          reviews: Array.isArray(data.reviews) ? data.reviews : [],
+          averageRating: Number(data.averageRating) || 0,
+          reviewCount: Number(data.reviewCount) || 0,
+          myReview: data.myReview || null,
+          eligibleOrders: Array.isArray(data.eligibleOrders)
+            ? data.eligibleOrders
+            : [],
+          canReview: Boolean(data.canReview),
+        }
+
+        setReviewsData(nextData)
+
+        if (nextData.myReview) {
+          setReviewRating(Number(nextData.myReview.rating) || 5)
+          setReviewComment(nextData.myReview.comment || '')
+        }
+
+        if (nextData.eligibleOrders.length) {
+          setReviewOrderId(String(nextData.eligibleOrders[0]._id))
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setReviewError(
+            err.response?.data?.message ||
+            'Could not load reviews. Please try again.'
+          )
+        }
+      } finally {
+        if (!cancelled) setReviewsLoading(false)
+      }
+    }
+
+    if (id) loadReviews()
+    else setReviewsLoading(false)
 
     return () => {
       cancelled = true
@@ -189,6 +259,64 @@ function ProductDetails() {
       )
     } finally {
       setPaying(false)
+    }
+  }
+
+  async function handleSaveReview(event) {
+    event.preventDefault()
+    setReviewError('')
+    setReviewMessage('')
+
+    if (!localStorage.getItem('token')) {
+      setReviewError('Please sign in to write a review.')
+      return
+    }
+
+    if (!Number.isInteger(Number(reviewRating)) ||
+        Number(reviewRating) < 1 || Number(reviewRating) > 5) {
+      setReviewError('Choose a rating from 1 to 5 stars.')
+      return
+    }
+
+    if (!reviewsData.myReview && !reviewOrderId) {
+      setReviewError('A successfully paid and delivered order is required to review this product.')
+      return
+    }
+
+    setReviewSaving(true)
+    try {
+      const response = await api.post(
+        `/reviews/product/${encodeURIComponent(id)}`,
+        {
+          rating: Number(reviewRating),
+          comment: reviewComment,
+          ...(!reviewsData.myReview ? { orderId: reviewOrderId } : {}),
+        }
+      )
+
+      setReviewMessage(response.data?.message || 'Review saved successfully.')
+
+      const refreshed = await api.get(
+        `/reviews/product/${encodeURIComponent(id)}`
+      )
+      const data = refreshed.data || {}
+      setReviewsData({
+        reviews: Array.isArray(data.reviews) ? data.reviews : [],
+        averageRating: Number(data.averageRating) || 0,
+        reviewCount: Number(data.reviewCount) || 0,
+        myReview: data.myReview || null,
+        eligibleOrders: Array.isArray(data.eligibleOrders)
+          ? data.eligibleOrders
+          : [],
+        canReview: Boolean(data.canReview),
+      })
+    } catch (err) {
+      setReviewError(
+        err.response?.data?.message ||
+        'Could not save your review. Please try again.'
+      )
+    } finally {
+      setReviewSaving(false)
     }
   }
 
@@ -411,6 +539,155 @@ const videoUrl = videoPath
               </video>
             </div>
           )}
+      </section>
+
+      <section className="details-reviews" aria-labelledby="details-reviews-title">
+        <div className="details-reviews-heading">
+          <div>
+            <h2 id="details-reviews-title">Ratings &amp; Reviews</h2>
+            <p className="details-review-summary">
+              <span className="details-review-stars" aria-label={`${reviewsData.averageRating} out of 5 stars`}>
+                {'★'.repeat(Math.round(reviewsData.averageRating))}
+                {'☆'.repeat(5 - Math.round(reviewsData.averageRating))}
+              </span>
+              <strong>{reviewsData.averageRating.toFixed(1)} / 5</strong>
+              <span>({reviewsData.reviewCount} {reviewsData.reviewCount === 1 ? 'review' : 'reviews'})</span>
+            </p>
+          </div>
+        </div>
+
+        {reviewsLoading ? (
+          <p>Loading reviews...</p>
+        ) : (
+          <>
+            {localStorage.getItem('token') && (
+              <form className="details-review-form" onSubmit={handleSaveReview}>
+                <h3>{reviewsData.myReview ? 'Edit your review' : 'Rate this product'}</h3>
+
+                {!reviewsData.myReview && reviewsData.eligibleOrders.length > 0 && (
+                  <label className="details-review-order-label">
+                    Delivered order
+                    <select
+                      value={reviewOrderId}
+                      onChange={(event) => setReviewOrderId(event.target.value)}
+                      required
+                    >
+                      {reviewsData.eligibleOrders.map((order) => (
+                        <option key={order._id} value={order._id}>
+                          Order {order._id}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
+                <div className="details-review-rating" role="group" aria-label="Choose a rating">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      className={star <= reviewRating ? 'is-selected' : ''}
+                      onClick={() => setReviewRating(star)}
+                      aria-label={`${star} ${star === 1 ? 'star' : 'stars'}`}
+                      aria-pressed={reviewRating === star}
+                    >
+                      ★
+                    </button>
+                  ))}
+                  <span>{reviewRating} / 5</span>
+                </div>
+
+                <label className="details-review-comment-label">
+                  Your review (optional)
+                  <textarea
+                    value={reviewComment}
+                    onChange={(event) => setReviewComment(event.target.value)}
+                    maxLength={1500}
+                    rows={4}
+                    placeholder="Share your experience with this product..."
+                  />
+                </label>
+
+                {!reviewsData.myReview && reviewsData.eligibleOrders.length === 0 && (
+                  <p className="details-review-hint">
+                    You can review this product after your order is successfully paid
+                    and you confirm that it has been delivered.
+                  </p>
+                )}
+
+                {reviewError && (
+                  <p className="details-review-error" role="alert">{reviewError}</p>
+                )}
+                {reviewMessage && (
+                  <p className="details-review-success" role="status">{reviewMessage}</p>
+                )}
+
+                <button
+                  className="details-review-submit"
+                  type="submit"
+                  disabled={
+                    reviewSaving ||
+                    (!reviewsData.myReview && reviewsData.eligibleOrders.length === 0)
+                  }
+                >
+                  {reviewSaving ? 'Saving...' : reviewsData.myReview ? 'Update review' : 'Submit review'}
+                </button>
+              </form>
+            )}
+
+            {!localStorage.getItem('token') && (
+              <p className="details-review-hint">
+                <button
+                  type="button"
+                  className="details-review-login"
+                  onClick={() => navigate('/login')}
+                >
+                  Sign in
+                </button>
+                {' '}to write a review after purchasing and receiving this product.
+              </p>
+            )}
+
+            {reviewError && !localStorage.getItem('token') && (
+              <p className="details-review-error" role="alert">{reviewError}</p>
+            )}
+
+            {reviewsData.reviews.length === 0 ? (
+              <p className="details-review-empty">No reviews yet. Be the first to share your experience after a completed delivery.</p>
+            ) : (
+              <div className="details-review-list">
+                {reviewsData.reviews.map((review) => {
+                  const buyerName = [
+                    review.buyer?.firstName,
+                    review.buyer?.lastName,
+                  ].filter(Boolean).join(' ') || 'Buyer'
+
+                  return (
+                    <article className="details-review-card" key={review._id}>
+                      <div className="details-review-card-top">
+                        <strong>{buyerName}</strong>
+                        <span className="details-review-stars" aria-label={`${review.rating} out of 5 stars`}>
+                          {'★'.repeat(Number(review.rating) || 0)}
+                          {'☆'.repeat(5 - (Number(review.rating) || 0))}
+                        </span>
+                      </div>
+                      {review.comment && <p>{review.comment}</p>}
+                      <time dateTime={review.createdAt}>
+                        {review.createdAt
+                          ? new Date(review.createdAt).toLocaleDateString()
+                          : ''}
+                        {review.updatedAt && review.createdAt &&
+                         new Date(review.updatedAt).getTime() > new Date(review.createdAt).getTime()
+                          ? ' · Edited'
+                          : ''}
+                      </time>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </>
+        )}
       </section>
     </main>
   )

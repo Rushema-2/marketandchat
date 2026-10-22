@@ -1,0 +1,155 @@
+
+import { useState } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { loginUser } from './services/authService'
+import Register from './components/Register'
+import Marketplace from './pages/Marketplace'
+import Favorites from './pages/Favorites'
+import ProductDetails from './pages/ProductDetails'
+import Messages from './pages/Messages'
+import MyOrders from './pages/MyOrders'
+import MyProducts from './pages/MyProducts'
+import Notifications from './pages/Notifications'
+import './App.css'
+
+function LoginPage() {
+  const [page, setPage] = useState('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleLogin(event) {
+    event.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      const data = await loginUser({
+        email: email.trim(),
+        password,
+      })
+
+      if (!data.token) {
+        setError('The server did not provide a login token.')
+        return
+      }
+
+      localStorage.setItem('token', data.token)
+
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user))
+      }
+
+      window.location.href = '/marketplace'
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        'Login failed. Please check your details and try again.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (page === 'register') {
+    return (
+      <Register
+        onLogin={() => {
+          setPage('login')
+          setError('')
+        }}
+      />
+    )
+  }
+
+  return (
+    <main className="login-page">
+      <header className="brand">
+        <div className="brand-icon" aria-hidden="true">R</div>
+        <div>
+          <h1>RwhatsApp</h1>
+          <p>Chat. Share. Trade together.</p>
+        </div>
+      </header>
+
+      <section className="login-card">
+        <div className="card-heading">
+          <h2>Welcome back!</h2>
+          <p>Sign in to your account to continue.</p>
+        </div>
+
+        <form onSubmit={handleLogin}>
+          <label htmlFor="email">Email address</label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
+
+          <div className="form-links">
+            <a href="/forgot-password.html">Forgot password?</a>
+          </div>
+
+          {error && <p className="error-message" role="alert">{error}</p>}
+
+          <button type="submit" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+
+        <p className="register-prompt">
+          Don't have an account?{' '}
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => setPage('register')}
+          >
+            Sign up
+          </button>
+        </p>
+      </section>
+
+      <footer className="login-footer">
+        © {new Date().getFullYear()} RwhatsApp
+      </footer>
+    </main>
+  )
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/favorites" element={<Favorites />} />
+        <Route path="/product/:id" element={<ProductDetails />} />
+        <Route path="/messages" element={<Messages />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/my-orders" element={<MyOrders />} />
+        <Route path="/my-products" element={<MyProducts />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+export default App
+
+
