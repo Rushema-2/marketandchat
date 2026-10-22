@@ -398,3 +398,29 @@
 .seller-store-card-link:hover {
   text-decoration: underline;
 }
+
+/* Marketplace product ratings */
+.marketplace-review-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.marketplace-review-stars {
+  color: #e6a000;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.marketplace-review-average {
+  color: #27343a;
+  font-weight: 700;
+}
+
+.marketplace-review-count {
+  color: #718089;
+}

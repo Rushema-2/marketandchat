@@ -322,3 +322,26 @@
   color: #b42318;
   font-size: 0.9rem;
 }
+
+
+/* Ratings & reviews in Seller Store */
+.seller-store-review-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 10px;
+  color: #647086;
+  font-size: 0.82rem;
+}
+
+.seller-store-review-stars {
+  color: #e5a000;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.seller-store-review-summary strong {
+  color: #172033;
+  font-weight: 700;
+}

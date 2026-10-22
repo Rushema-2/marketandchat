@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Favorite = require("../models/Favorite");
 const Product = require("../models/Product");
+const Review = require("../models/Review");
 
 async function getFavorites(req, res) {
   try {
@@ -15,14 +16,47 @@ async function getFavorites(req, res) {
         },
       });
 
+    const validFavorites = favorites.filter((favorite) => favorite.product);
+    const productIds = validFavorites.map((favorite) => favorite.product._id);
+
+    const summaries = productIds.length
+      ? await Review.aggregate([
+          { $match: { product: { $in: productIds } } },
+          {
+            $group: {
+              _id: "$product",
+              averageRating: { $avg: "$rating" },
+              reviewCount: { $sum: 1 },
+            },
+          },
+        ])
+      : [];
+
+    const summaryByProduct = new Map(
+      summaries.map((item) => [
+        String(item._id),
+        {
+          averageRating: Math.round(item.averageRating * 10) / 10,
+          reviewCount: item.reviewCount,
+        },
+      ])
+    );
+
     return res.json({
-      favorites: favorites
-        .filter((favorite) => favorite.product)
-        .map((favorite) => ({
+      favorites: validFavorites.map((favorite) => {
+        const product = favorite.product;
+        const summary = summaryByProduct.get(String(product._id));
+
+        return {
           _id: favorite._id,
           createdAt: favorite.createdAt,
-          product: favorite.product,
-        })),
+          product: {
+            ...product.toObject(),
+            averageRating: summary?.averageRating ?? 0,
+            reviewCount: summary?.reviewCount ?? 0,
+          },
+        };
+      }),
     });
   } catch (error) {
     console.error("Get favorites error:", error);

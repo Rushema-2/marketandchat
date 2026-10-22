@@ -1,6 +1,7 @@
 const Product = require("../models/Product");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
+const Review = require("../models/Review");
 
 // ========================================
 // CREATE PRODUCT
@@ -130,30 +131,68 @@ const filter = {
             (Number(page) - 1) * Number(limit);
 
         const products =
-    await Product.find(filter)
-        .populate(
-            "seller",
-            "firstName lastName email phone"
-        )
-        .sort({
-            isPromoted: -1,
-            createdAt: -1
-        })
-        .skip(skip)
-        .limit(Number(limit));
+            await Product.find(filter)
+                .populate(
+                    "seller",
+                    "firstName lastName email phone"
+                )
+                .sort({
+                    isPromoted: -1,
+                    createdAt: -1
+                })
+                .skip(skip)
+                .limit(Number(limit));
 
-        const total =
-            await Product.countDocuments(filter);
+        const total = await Product.countDocuments(filter);
+
+        // Bara reviews z'ibicuruzwa biri kuri page iri gusabwa.
+        const productIds = products.map(product => product._id);
+        let reviewSummaries = [];
+
+        if (productIds.length > 0) {
+            reviewSummaries = await Review.aggregate([
+                {
+                    $match: {
+                        product: { $in: productIds }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$product",
+                        averageRating: { $avg: "$rating" },
+                        reviewCount: { $sum: 1 }
+                    }
+                }
+            ]);
+        }
+
+        const summaryByProduct = new Map(
+            reviewSummaries.map(item => [
+                String(item._id),
+                {
+                    averageRating: Math.round(item.averageRating * 10) / 10,
+                    reviewCount: item.reviewCount
+                }
+            ])
+        );
+
+        const productsWithRatings = products.map(product => {
+            const summary = summaryByProduct.get(String(product._id));
+
+            return {
+                ...product.toObject(),
+                averageRating: summary?.averageRating ?? 0,
+                reviewCount: summary?.reviewCount ?? 0
+            };
+        });
 
         return res.json({
-            products,
+            products: productsWithRatings,
             pagination: {
                 page: Number(page),
                 limit: Number(limit),
                 total,
-                pages: Math.ceil(
-                    total / Number(limit)
-                )
+                pages: Math.ceil(total / Number(limit))
             }
         });
 
@@ -300,9 +339,44 @@ const getSellerProducts = async (req, res) => {
                 createdAt: -1
             });
 
+        const productIds = products.map(product => product._id);
+
+        const summaries = productIds.length
+            ? await Review.aggregate([
+                { $match: { product: { $in: productIds } } },
+                {
+                    $group: {
+                        _id: "$product",
+                        averageRating: { $avg: "$rating" },
+                        reviewCount: { $sum: 1 }
+                    }
+                }
+            ])
+            : [];
+
+        const summaryByProduct = new Map(
+            summaries.map(item => [
+                String(item._id),
+                {
+                    averageRating: Math.round(item.averageRating * 10) / 10,
+                    reviewCount: item.reviewCount
+                }
+            ])
+        );
+
+        const productsWithRatings = products.map(product => {
+            const summary = summaryByProduct.get(String(product._id));
+
+            return {
+                ...product.toObject(),
+                averageRating: summary?.averageRating ?? 0,
+                reviewCount: summary?.reviewCount ?? 0
+            };
+        });
+
         return res.json({
             seller,
-            products
+            products: productsWithRatings
         });
 
     } catch (error) {

@@ -237,6 +237,30 @@ function SellerStore() {
                           </a>
                         </h3>
 
+                        <div
+                          className="seller-store-review-summary"
+                          aria-label={
+                            product.reviewCount > 0
+                              ? `${product.averageRating} out of 5 stars from ${product.reviewCount} reviews`
+                              : 'No reviews yet'
+                          }
+                        >
+                          <span className="seller-store-review-stars" aria-hidden="true">
+                            {'★'.repeat(Math.round(product.averageRating || 0))}
+                            {'☆'.repeat(5 - Math.round(product.averageRating || 0))}
+                          </span>
+                          {product.reviewCount > 0 ? (
+                            <>
+                              <strong>{Number(product.averageRating || 0).toFixed(1)} / 5</strong>
+                              <span>
+                                ({product.reviewCount} {product.reviewCount === 1 ? 'review' : 'reviews'})
+                              </span>
+                            </>
+                          ) : (
+                            <span>No reviews yet</span>
+                          )}
+                        </div>
+
                         <p className="seller-store-description">
                           {product.description || 'No description provided.'}
                         </p>

@@ -541,7 +541,7 @@ const videoUrl = videoPath
           )}
       </section>
 
-      <section className="details-reviews" aria-labelledby="details-reviews-title">
+      <section id="details-reviews" className="details-reviews" aria-labelledby="details-reviews-title">
         <div className="details-reviews-heading">
           <div>
             <h2 id="details-reviews-title">Ratings &amp; Reviews</h2>

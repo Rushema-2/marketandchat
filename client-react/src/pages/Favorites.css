@@ -69,3 +69,26 @@
   text-decoration: none;
   font-weight: 700;
 }
+
+
+/* Ratings & reviews in Favorites */
+.favorites-review-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 10px;
+  color: #647086;
+  font-size: 0.82rem;
+}
+
+.favorites-review-stars {
+  color: #e5a000;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.favorites-review-summary strong {
+  color: #172033;
+  font-weight: 700;
+}

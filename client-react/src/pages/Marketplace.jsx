@@ -298,6 +298,34 @@ function Marketplace() {
                       <strong className="product-price">
                         {formatPrice(product.price, product.currency || 'RWF')}
                       </strong>
+                      <div
+                        className="marketplace-review-summary"
+                        aria-label={
+                          product.reviewCount > 0
+                            ? `${product.averageRating} out of 5 stars from ${product.reviewCount} reviews`
+                            : 'No reviews yet'
+                        }
+                      >
+                        {product.reviewCount > 0 ? (
+                          <>
+                            <span className="marketplace-review-stars" aria-hidden="true">
+                              {'★'.repeat(Math.round(product.averageRating || 0))}
+                              {'☆'.repeat(5 - Math.round(product.averageRating || 0))}
+                            </span>
+                            <span className="marketplace-review-average">
+                              {Number(product.averageRating || 0).toFixed(1)}
+                            </span>
+                            <span className="marketplace-review-count">
+                              ({product.reviewCount} {product.reviewCount === 1 ? 'review' : 'reviews'})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="marketplace-review-stars" aria-hidden="true">☆☆☆☆☆</span>
+                            <span className="marketplace-review-count">No reviews yet</span>
+                          </>
+                        )}
+                      </div>
                       <div className="product-meta">
                         <span>📍 {product.location || 'Location not specified'}</span>
                         <span>{product.stock > 0 ? 'In stock' : 'Out of stock'}</span>

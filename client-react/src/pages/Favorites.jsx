@@ -182,6 +182,29 @@ function Favorites() {
                           {product.title}
                         </a>
                       </h3>
+                      <div
+                        className="favorites-review-summary"
+                        aria-label={
+                          product.reviewCount > 0
+                            ? `${product.averageRating} out of 5 stars from ${product.reviewCount} reviews`
+                            : 'No reviews yet'
+                        }
+                      >
+                        <span className="favorites-review-stars" aria-hidden="true">
+                          {'★'.repeat(Math.round(product.averageRating || 0))}
+                          {'☆'.repeat(5 - Math.round(product.averageRating || 0))}
+                        </span>
+                        {product.reviewCount > 0 ? (
+                          <>
+                            <strong>{Number(product.averageRating || 0).toFixed(1)} / 5</strong>
+                            <span>
+                              ({product.reviewCount} {product.reviewCount === 1 ? 'review' : 'reviews'})
+                            </span>
+                          </>
+                        ) : (
+                          <span>No reviews yet</span>
+                        )}
+                      </div>
                       <p className="product-description">{product.description}</p>
                       <strong className="product-price">
                         {formatPrice(product.price, product.currency)}

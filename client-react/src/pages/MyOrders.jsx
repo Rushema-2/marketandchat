@@ -73,6 +73,14 @@ export default function MyOrders() {
                   </div>
                   <div className="order-card-footer">
                     <span>Placed {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'date unavailable'}</span>
+                    {product._id && (
+                      <a
+                        className="workspace-secondary order-review-link"
+                        href={`/product/${encodeURIComponent(product._id)}#details-reviews`}
+                      >
+                        View product &amp; reviews
+                      </a>
+                    )}
                     {paymentStatus && <span>Payment: {statusLabel(paymentStatus)}</span>}
                   </div>
                 </article>
