@@ -11,6 +11,7 @@ import Messages from './pages/Messages'
 import MyOrders from './pages/MyOrders'
 import MyProducts from './pages/MyProducts'
 import Notifications from './pages/Notifications'
+import SellerDashboard from './pages/SellerDashboard'
 import './App.css'
 
 function LoginPage() {
@@ -146,6 +147,7 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/my-products" element={<MyProducts />} />
+        <Route path="/seller-dashboard" element={<SellerDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

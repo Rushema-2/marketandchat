@@ -747,6 +747,15 @@ if (checkPromotionPaymentButton) {
                     await response.json();
 
                 if (!response.ok) {
+                    if (
+                        response.status === 409 &&
+                        data.payment?.paymentMode === "sandbox"
+                    ) {
+                        paymentStatus.textContent =
+                            "Sandbox test only — the promotion has not been activated. No real payment or promotion status was changed.";
+                        return;
+                    }
+
                     throw new Error(
                         data.message ||
                         "Could not check payment status"

@@ -167,6 +167,7 @@ function Marketplace() {
           <NotificationBell />
           <a href="/my-orders">My orders</a>
           <a href="/my-products">My products</a>
+          <a href="/seller-dashboard">Seller Dashboard</a>
         </nav>
 
         <button className="logout-button" onClick={logout}>

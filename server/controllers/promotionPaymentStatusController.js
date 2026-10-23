@@ -47,57 +47,97 @@ const checkPromotionPaymentStatus = async (req, res) => {
         const momoPaymentStatus =
             momoStatus.status;
 
+        // Sandbox results must never mutate real promotion records.
         if (
-    momoPaymentStatus ===
-    "SUCCESSFUL"
-) {
-    const now = new Date();
-
-    const durationDays = {
-        "1_day": 1,
-        "7_days": 7,
-        "30_days": 30
-    }[promotion.package];
-
-    if (!durationDays) {
-        return res.status(500).json({
-            message: "Invalid promotion package"
-        });
-    }
-
-    const endDate = new Date(now);
-    endDate.setDate(
-        endDate.getDate() + durationDays
-    );
-
-    promotion.status = "active";
-    promotion.startDate = now;
-    promotion.endDate = endDate;
-
-    await promotion.save();
-
-    await Product.findByIdAndUpdate(
-        promotion.product,
-        {
-            isPromoted: true,
-            promotionStart: now,
-            promotionEnd: endDate,
-            promotionPackage: promotion.package
+            String(process.env.MOMO_ENV || "").toLowerCase() === "sandbox" &&
+            ["SUCCESSFUL", "FAILED"].includes(momoPaymentStatus)
+        ) {
+            return res.status(409).json({
+                message:
+                    "Sandbox payment status is simulated. The promotion was not changed.",
+                payment: {
+                    promotionId: promotion._id,
+                    status: promotion.status,
+                    momoStatus: momoPaymentStatus,
+                    paymentMode: "sandbox"
+                }
+            });
         }
-    );
 
-    return res.status(200).json({
-        message: "Payment successful and promotion activated",
-        payment: {
-            promotionId: promotion._id,
-            status: promotion.status,
-            momoStatus: momoPaymentStatus,
-            promotionStart: now,
-            promotionEnd: endDate,
-            promotionPackage: promotion.package
+        if (momoPaymentStatus === "SUCCESSFUL") {
+            // Do not restart an already activated promotion.
+            if (promotion.status === "active" &&
+                promotion.startDate &&
+                promotion.endDate) {
+                return res.status(200).json({
+                    message: "Promotion is already active",
+                    payment: {
+                        promotionId: promotion._id,
+                        status: promotion.status,
+                        momoStatus: momoPaymentStatus,
+                        promotionStart: promotion.startDate,
+                        promotionEnd: promotion.endDate,
+                        promotionPackage: promotion.package
+                    }
+                });
+            }
+
+            // Only a pending promotion can be activated by this payment.
+            if (promotion.status !== "pending") {
+                return res.status(409).json({
+                    message: "Promotion is not pending and cannot be activated",
+                    payment: {
+                        promotionId: promotion._id,
+                        status: promotion.status,
+                        momoStatus: momoPaymentStatus
+                    }
+                });
+            }
+
+            const durationDays = {
+                "1_day": 1,
+                "7_days": 7,
+                "30_days": 30
+            }[promotion.package];
+
+            if (!durationDays) {
+                return res.status(500).json({
+                    message: "Invalid promotion package"
+                });
+            }
+
+            const now = new Date();
+            const endDate = new Date(now);
+            endDate.setDate(endDate.getDate() + durationDays);
+
+            promotion.status = "active";
+            promotion.startDate = now;
+            promotion.endDate = endDate;
+
+            await promotion.save();
+
+            await Product.findByIdAndUpdate(
+                promotion.product,
+                {
+                    isPromoted: true,
+                    promotionStart: now,
+                    promotionEnd: endDate,
+                    promotionPackage: promotion.package
+                }
+            );
+
+            return res.status(200).json({
+                message: "Payment successful and promotion activated",
+                payment: {
+                    promotionId: promotion._id,
+                    status: promotion.status,
+                    momoStatus: momoPaymentStatus,
+                    promotionStart: now,
+                    promotionEnd: endDate,
+                    promotionPackage: promotion.package
+                }
+            });
         }
-    });
-}
 
         if (
             momoPaymentStatus ===
