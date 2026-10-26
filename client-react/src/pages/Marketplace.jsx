@@ -153,9 +153,9 @@ function Marketplace() {
     <main className="marketplace-page">
       <header className="market-header">
         <a className="market-brand" href="/marketplace">
-          <span className="market-logo">R</span>
+          <img className="market-logo-image" src="/nr-nexus-logo.png" alt="NR Nexus logo" />
           <span>
-            <strong>RwhatsApp</strong>
+            <strong>NR Nexus</strong>
             <small>Chat. Share. Trade together.</small>
           </span>
         </a>
@@ -354,7 +354,7 @@ function Marketplace() {
       </section>
 
       <footer className="market-footer">
-        © {new Date().getFullYear()} RwhatsApp · Chat. Share. Trade together.
+        © {new Date().getFullYear()} NR Nexus · Chat. Share. Trade together.
       </footer>
     </main>
   )

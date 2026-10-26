@@ -424,3 +424,12 @@
 .marketplace-review-count {
   color: #718089;
 }
+
+
+.market-logo-image {
+  display: block;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  flex-shrink: 0;
+}

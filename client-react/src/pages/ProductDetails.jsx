@@ -377,7 +377,7 @@ const videoUrl = videoPath
   return (
     <main className="product-details-page">
       <header className="details-header">
-        <a href="/marketplace" className="details-brand">RwhatsApp</a>
+        <a href="/marketplace" className="details-brand">NR Nexus</a>
         <button className="details-back" onClick={() => navigate('/marketplace')}>
           ← Back to Marketplace
         </button>

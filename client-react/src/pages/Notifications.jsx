@@ -5,12 +5,12 @@ import './Notifications.css'
 function senderName(notification) {
   const sender = notification.sender
 
-  if (!sender) return 'RwhatsApp'
+  if (!sender) return 'NR Nexus'
 
   return (
     [sender.firstName, sender.lastName].filter(Boolean).join(' ').trim() ||
     sender.email ||
-    'RwhatsApp'
+    'NR Nexus'
   )
 }
 
@@ -107,7 +107,7 @@ export default function Notifications() {
         <a className="notifications-brand" href="/marketplace">
           <span className="notifications-logo">R</span>
           <span>
-            <strong>RwhatsApp</strong>
+            <strong>NR Nexus</strong>
             <small>Chat. Share. Trade together.</small>
           </span>
         </a>

@@ -67,9 +67,9 @@ export default function Register({ onLogin }) {
   return (
     <main className="login-page">
       <header className="brand">
-        <div className="brand-icon" aria-hidden="true">R</div>
+        <img src="/nr-nexus-logo.png" alt="NR Nexus logo" style={{ width: 58, height: 58, objectFit: "contain" }} />
         <div>
-          <h1>RwhatsApp</h1>
+          <h1>NR Nexus</h1>
           <p>Chat. Share. Trade together.</p>
         </div>
       </header>
@@ -77,7 +77,7 @@ export default function Register({ onLogin }) {
       <section className="login-card">
         <div className="card-heading">
           <h2>Create an account</h2>
-          <p>Enter your details to get started with RwhatsApp.</p>
+          <p>Enter your details to get started with NR Nexus.</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -124,7 +124,7 @@ export default function Register({ onLogin }) {
       </section>
 
       <footer className="login-footer">
-        © {new Date().getFullYear()} RwhatsApp
+        © {new Date().getFullYear()} NR Nexus
       </footer>
     </main>
   )

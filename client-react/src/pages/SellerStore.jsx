@@ -128,7 +128,7 @@ function SellerStore() {
       <header className="seller-store-header">
         <a className="seller-store-brand" href="/marketplace">
           <span className="seller-store-logo">R</span>
-          <span>RwhatsApp</span>
+          <span>NR Nexus</span>
         </a>
 
         <button
@@ -290,7 +290,7 @@ function SellerStore() {
       )}
 
       <footer className="seller-store-footer">
-        © {new Date().getFullYear()} RwhatsApp · Chat. Share. Trade together.
+        © {new Date().getFullYear()} NR Nexus · Chat. Share. Trade together.
       </footer>
     </main>
   )

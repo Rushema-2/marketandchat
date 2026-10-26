@@ -173,7 +173,7 @@ const [selectedVideo, setSelectedVideo] = useState(null);
   return (
     <main className="workspace-page">
       <header className="workspace-header">
-        <a className="workspace-brand" href="/marketplace">RwhatsApp</a>
+        <a className="workspace-brand" href="/marketplace">NR Nexus</a>
         <nav className="workspace-nav">
           <a href="/marketplace">Marketplace</a>
           <a href="/messages">Messages</a>

@@ -218,7 +218,7 @@ export default function AdminDashboard() {
     <main className="admin-dashboard">
       <header className="admin-header">
         <div>
-          <Link className="admin-brand" to="/marketplace">RwhatsApp</Link>
+          <Link className="admin-brand" to="/marketplace">NR Nexus</Link>
           <p>Administration workspace</p>
         </div>
         <Link className="admin-back-link" to="/marketplace">← Marketplace</Link>
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
 
         <section className="admin-main">
           <div className="admin-page-heading">
-            <div><span className="admin-eyebrow">RWHATSAPP ADMIN</span><h1>{currentLabel}</h1>
+            <div><span className="admin-eyebrow">NR NEXUS ADMIN</span><h1>{currentLabel}</h1>
               <p>Reba uko platform ihagaze n'amakuru y'ibikorwa.</p></div>
             <button type="button" className="admin-refresh" disabled={loading}
               onClick={() => section === 'overview' ? loadOverview() : loadList(section, page)}>

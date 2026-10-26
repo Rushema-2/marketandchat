@@ -82,7 +82,7 @@ function Favorites() {
         <a className="market-brand" href="/marketplace">
           <span className="market-logo">R</span>
           <span>
-            <strong>RwhatsApp</strong>
+            <strong>NR Nexus</strong>
             <small>Chat. Share. Trade together.</small>
           </span>
         </a>
@@ -236,7 +236,7 @@ function Favorites() {
       </section>
 
       <footer className="market-footer">
-        © {new Date().getFullYear()} RwhatsApp · Chat. Share. Trade together.
+        © {new Date().getFullYear()} NR Nexus · Chat. Share. Trade together.
       </footer>
     </main>
   )

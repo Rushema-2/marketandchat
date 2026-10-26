@@ -71,7 +71,7 @@ function LoginPage() {
       <header className="brand">
         <div className="brand-icon" aria-hidden="true">R</div>
         <div>
-          <h1>RwhatsApp</h1>
+          <h1>NR Nexus</h1>
           <p>Chat. Share. Trade together.</p>
         </div>
       </header>
@@ -129,7 +129,7 @@ function LoginPage() {
       </section>
 
       <footer className="login-footer">
-        © {new Date().getFullYear()} RwhatsApp
+        © {new Date().getFullYear()} NR Nexus
       </footer>
     </main>
   )
