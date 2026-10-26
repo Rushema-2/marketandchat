@@ -21,6 +21,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const path = require("path");
 const Message = require("./models/Message");
 const Conversation = require("./models/Conversation");
@@ -82,6 +83,7 @@ app.use( "/api/notifications", notificationRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/admin", adminRoutes);
 
 // React Router fallback: serve the React app for frontend routes
 app.get("/{*path}", (req, res, next) => {

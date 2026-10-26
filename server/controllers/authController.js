@@ -51,7 +51,8 @@ const registerUser = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
-                phone: user.phone
+                phone: user.phone,
+                role: user.role || "user"
             }
         });
 
@@ -111,7 +112,8 @@ const loginUser = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
-                phone: user.phone
+                phone: user.phone,
+                role: user.role || "user"
             }
         });
 
