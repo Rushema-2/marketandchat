@@ -203,3 +203,66 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+
+.google-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0;
+  color: #87939a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.google-login-divider::before,
+.google-login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e5ebee;
+}
+
+.google-login-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+}
+
+.google-login-button > div {
+  max-width: 100%;
+}
+
+.google-loading-message {
+  margin: 0;
+  color: #65747e;
+  font-size: 13px;
+}
+
+.google-phone-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.google-phone-heading {
+  margin: 0 0 4px;
+  color: #273640;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.google-phone-form label {
+  margin-top: 4px;
+}
+
+.google-phone-form .google-cancel-button {
+  background: #eef2f4;
+  color: #273640;
+}
+
+.google-phone-form .google-cancel-button:hover:not(:disabled) {
+  background: #e1e8eb;
+}

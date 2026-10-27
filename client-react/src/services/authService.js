@@ -31,3 +31,12 @@ export const getCurrentUser = async () => {
   const response = await api.get('/auth/me')
   return response.data
 }
+
+export const googleLoginUser = async ({ credential, phone }) => {
+  const response = await api.post('/auth/google', {
+    credential,
+    ...(phone ? { phone } : {}),
+  })
+
+  return response.data
+}
