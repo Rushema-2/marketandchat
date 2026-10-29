@@ -14,13 +14,49 @@ export default function MyOrders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [confirmingOrderId, setConfirmingOrderId] = useState('')
+
+  async function loadOrders() {
+    const { data } = await api.get('/orders/my-orders')
+    setOrders(data.orders || [])
+  }
 
   useEffect(() => {
-    api.get('/orders/my-orders')
-      .then(({ data }) => setOrders(data.orders || []))
-      .catch((err) => setError(err.response?.data?.message || 'Could not load your orders.'))
+    loadOrders()
+      .catch((err) => setError(
+        err.response?.data?.message || 'Could not load your orders.'
+      ))
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleConfirmDelivery(orderId) {
+    const confirmed = window.confirm(
+      'Confirm that you have received this order? Only confirm if the product has arrived.'
+    )
+
+    if (!confirmed) return
+
+    setError('')
+    setNotice('')
+    setConfirmingOrderId(orderId)
+
+    try {
+      const { data } = await api.patch(
+        `/orders/${encodeURIComponent(orderId)}/confirm-delivery`
+      )
+
+      setNotice(data.message || 'Delivery confirmed successfully.')
+      await loadOrders()
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        'Could not confirm delivery. Please refresh your orders and try again.'
+      )
+    } finally {
+      setConfirmingOrderId('')
+    }
+  }
 
   return (
     <main className="workspace-page">
@@ -42,6 +78,7 @@ export default function MyOrders() {
 
         {loading && <p className="workspace-muted">Loading your orders...</p>}
         {error && <p className="workspace-error" role="alert">{error}</p>}
+        {notice && <p className="workspace-success" role="status">{notice}</p>}
 
         {!loading && !error && orders.length === 0 && (
           <div className="workspace-empty"><span>▤</span><h2>No orders yet</h2><p>Products you order will appear here.</p><a className="workspace-primary" href="/marketplace">Explore Marketplace</a></div>
@@ -82,6 +119,18 @@ export default function MyOrders() {
                       </a>
                     )}
                     {paymentStatus && <span>Payment: {statusLabel(paymentStatus)}</span>}
+                    {paymentStatus === 'successful' && orderStatus === 'shipped' && (
+                      <button
+                        className="workspace-primary"
+                        type="button"
+                        onClick={() => handleConfirmDelivery(order._id)}
+                        disabled={confirmingOrderId === order._id}
+                      >
+                        {confirmingOrderId === order._id
+                          ? 'Confirming...'
+                          : 'Confirm Delivery'}
+                      </button>
+                    )}
                   </div>
                 </article>
               )

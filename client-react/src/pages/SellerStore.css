@@ -345,3 +345,121 @@
   color: #172033;
   font-weight: 700;
 }
+
+
+/* Seller ratings and reviews */
+.seller-store-reviews-section {
+  max-width: 1200px;
+  margin: 0 auto 36px;
+  padding: 24px;
+  border: 1px solid #e5eaf1;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.seller-store-rating-overview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 22px;
+  color: #647086;
+}
+
+.seller-store-rating-number {
+  color: #172033;
+  font-size: 2rem;
+}
+
+.seller-store-review-list {
+  display: grid;
+  gap: 12px;
+}
+
+.seller-store-review-item {
+  padding: 16px 0;
+  border-top: 1px solid #e5eaf1;
+  overflow-wrap: anywhere;
+}
+
+.seller-store-review-item-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.seller-store-review-item p {
+  margin: 9px 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.seller-store-review-item time,
+.seller-store-no-reviews,
+.seller-store-review-status {
+  color: #647086;
+  font-size: 0.9rem;
+}
+
+.seller-store-review-form {
+  display: grid;
+  gap: 14px;
+  max-width: 650px;
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid #e5eaf1;
+}
+
+.seller-store-review-form h3 {
+  margin: 0;
+}
+
+.seller-store-review-form label {
+  display: grid;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.seller-store-review-form select,
+.seller-store-review-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #d9e1ea;
+  border-radius: 9px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+}
+
+.seller-store-review-form button {
+  justify-self: start;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #147d64;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.seller-store-review-form button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.seller-store-review-error {
+  color: #b42318;
+}
+
+.seller-store-review-success {
+  color: #147d64;
+}
+
+@media (max-width: 600px) {
+  .seller-store-reviews-section {
+    padding: 18px;
+  }
+}

@@ -95,15 +95,12 @@ export default function AdminDashboard() {
     else loadList(section, page)
   }, [section, page, loadOverview, loadList])
 
-  if (!localStorage.getItem('token')) return <Navigate to="/" replace />
+  if (!localStorage.getItem('token')) {
+    return <Navigate to="/login" replace />
+  }
+
   if (storedUser?.role !== 'admin') {
-    return (
-      <main className="admin-access-denied">
-        <h1>Admin access required</h1>
-        <p>This page is for accounts with administrator access.</p>
-        <Link to="/marketplace">Back to Marketplace</Link>
-      </main>
-    )
+    return <Navigate to="/marketplace" replace />
   }
 
   function changeSection(id) {
