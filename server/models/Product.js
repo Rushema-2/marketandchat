@@ -71,6 +71,15 @@ const productSchema = new mongoose.Schema(
             min: 0
         },
 
+        // Order IDs already deducted from stock through direct payment.
+        // This makes seller confirmation safe to retry.
+        stockDeductionOrderIds: {
+            type: [{
+                type: mongoose.Schema.Types.ObjectId
+            }],
+            default: []
+        },
+
         status: {
             type: String,
             enum: ["active", "sold", "hidden"],

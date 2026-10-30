@@ -334,6 +334,447 @@ const checkOrderPayment = async (req, res) => {
     }
 };
 
+
+// GET SELLER PAYMENT DETAILS FOR THIS BUYER ORDER
+const getDirectPaymentDetails = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+        const { orderId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(orderId)) {
+            return res.status(400).json({ message: "Invalid order ID" });
+        }
+
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (String(order.buyer) !== String(buyerId)) {
+            return res.status(403).json({
+                message: "You are not allowed to view these payment details"
+            });
+        }
+
+        if (order.status !== "pending") {
+            return res.status(400).json({
+                message: "Direct payment is only available for pending orders"
+            });
+        }
+
+        if (
+            order.directPaymentStatus === "confirmed" ||
+            order.directPaymentStatus === "confirming"
+        ) {
+            return res.status(409).json({
+                message: "This order payment is already being processed or confirmed"
+            });
+        }
+
+        const seller = await User.findById(order.seller)
+            .select("firstName lastName paymentSettings");
+
+        if (!seller) {
+            return res.status(404).json({ message: "Seller not found" });
+        }
+
+        const settings = seller.paymentSettings || {};
+        const paymentMethods = [];
+
+        if (settings.mtnMomoNumber) {
+            paymentMethods.push({
+                provider: "mtn_momo",
+                label: "MTN MoMo",
+                number: settings.mtnMomoNumber
+            });
+        }
+
+        if (settings.airtelMoneyNumber) {
+            paymentMethods.push({
+                provider: "airtel_money",
+                label: "Airtel Money",
+                number: settings.airtelMoneyNumber
+            });
+        }
+
+        return res.status(200).json({
+            orderId: order._id,
+            amount: order.totalAmount,
+            currency: order.currency || "RWF",
+            seller: {
+                name: [seller.firstName, seller.lastName]
+                    .filter(Boolean)
+                    .join(" ")
+            },
+            paymentMethods,
+            directPaymentStatus: order.directPaymentStatus || "not_started"
+        });
+    } catch (error) {
+        console.error("Get direct payment details error:", error);
+        return res.status(500).json({
+            message: "Failed to load seller payment details"
+        });
+    }
+};
+
+
+// BUYER SUBMITS DIRECT PAYMENT REFERENCE
+const submitDirectPayment = async (req, res) => {
+    try {
+        const buyerId = req.user.userId;
+        const { orderId } = req.params;
+        const provider = String(req.body.provider || "").trim();
+        const reference = String(req.body.reference || "").trim();
+
+        if (!mongoose.Types.ObjectId.isValid(orderId)) {
+            return res.status(400).json({ message: "Invalid order ID" });
+        }
+
+        if (!["mtn_momo", "airtel_money"].includes(provider)) {
+            return res.status(400).json({
+                message: "Choose MTN MoMo or Airtel Money"
+            });
+        }
+
+        if (reference.length < 4 || reference.length > 80) {
+            return res.status(400).json({
+                message: "Transaction reference must contain 4 to 80 characters"
+            });
+        }
+
+        const order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (String(order.buyer) !== String(buyerId)) {
+            return res.status(403).json({
+                message: "You are not allowed to submit payment for this order"
+            });
+        }
+
+        if (order.status !== "pending") {
+            return res.status(400).json({
+                message: "This order is no longer pending"
+            });
+        }
+
+        if (
+            order.directPaymentStatus === "confirmed" ||
+            order.directPaymentStatus === "confirming"
+        ) {
+            return res.status(409).json({
+                message: "Payment is already being processed or confirmed"
+            });
+        }
+
+        const seller = await User.findById(order.seller)
+            .select("paymentSettings");
+
+        if (!seller) {
+            return res.status(404).json({ message: "Seller not found" });
+        }
+
+        const settings = seller.paymentSettings || {};
+        const selectedNumber = provider === "mtn_momo"
+            ? settings.mtnMomoNumber
+            : settings.airtelMoneyNumber;
+
+        if (!selectedNumber) {
+            return res.status(400).json({
+                message: "Seller has not configured this payment method"
+            });
+        }
+
+        // Conditional update prevents simultaneous submissions from overwriting
+        // a payment that has already entered confirmation.
+        const updatedOrder = await Order.findOneAndUpdate(
+            {
+                _id: orderId,
+                buyer: buyerId,
+                status: "pending",
+                directPaymentStatus: {
+                    $in: ["not_started", "rejected"]
+                }
+            },
+            {
+                $set: {
+                    directPaymentProvider: provider,
+                    directPaymentReference: reference,
+                    directPaymentStatus: "submitted",
+                    directPaymentSubmittedAt: new Date(),
+                    directPaymentConfirmedAt: null,
+                    directPaymentRejectedAt: null,
+                    directPaymentRejectionReason: ""
+                }
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedOrder) {
+            return res.status(409).json({
+                message: "Order changed while submitting payment. Please refresh and try again."
+            });
+        }
+
+        return res.status(200).json({
+            message: "Payment reference submitted. The seller must verify receipt.",
+            orderId: updatedOrder._id,
+            directPaymentProvider: updatedOrder.directPaymentProvider,
+            directPaymentStatus: updatedOrder.directPaymentStatus,
+            directPaymentReference: updatedOrder.directPaymentReference
+        });
+    } catch (error) {
+        console.error("Submit direct payment error:", error);
+        return res.status(500).json({
+            message: "Failed to submit payment reference"
+        });
+    }
+};
+
+
+// SELLER CONFIRMS A BUYER'S DIRECT WALLET PAYMENT
+const confirmDirectPayment = async (req, res) => {
+    try {
+        const sellerId = req.user.userId;
+        const { orderId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(orderId)) {
+            return res.status(400).json({ message: "Invalid order ID" });
+        }
+
+        let order = await Order.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (String(order.seller) !== String(sellerId)) {
+            return res.status(403).json({
+                message: "Only this product's seller can confirm payment"
+            });
+        }
+
+        if (order.directPaymentStatus === "confirmed") {
+            return res.status(200).json({
+                message: "Payment was already confirmed",
+                order
+            });
+        }
+
+        if (order.status !== "pending") {
+            return res.status(409).json({
+                message: "This order is no longer pending"
+            });
+        }
+
+        if (
+            !order.directPaymentProvider ||
+            !order.directPaymentReference ||
+            !["submitted", "confirming"].includes(order.directPaymentStatus)
+        ) {
+            return res.status(409).json({
+                message: "There is no submitted direct payment to confirm"
+            });
+        }
+
+        // Check whether a previous attempt already deducted this order.
+        let alreadyDeducted = await Product.exists({
+            _id: order.product,
+            stockDeductionOrderIds: order._id
+        });
+
+        // Only one request can claim a new submission.
+        if (!alreadyDeducted && order.directPaymentStatus === "submitted") {
+            const claimed = await Order.findOneAndUpdate(
+                {
+                    _id: orderId,
+                    seller: sellerId,
+                    status: "pending",
+                    directPaymentStatus: "submitted"
+                },
+                {
+                    $set: { directPaymentStatus: "confirming" }
+                },
+                { new: true }
+            );
+
+            if (!claimed) {
+                return res.status(409).json({
+                    message: "Another request is processing this payment. Refresh and try again."
+                });
+            }
+
+            order = claimed;
+        }
+
+        // Seller must verify the actual wallet receipt before this operation.
+        // The Product update is atomic: only one request can deduct this order.
+        if (!alreadyDeducted) {
+            const product = await Product.findOneAndUpdate(
+                {
+                    _id: order.product,
+                    status: "active",
+                    stock: { $gte: order.quantity },
+                    stockDeductionOrderIds: { $ne: order._id }
+                },
+                {
+                    $inc: { stock: -order.quantity },
+                    $addToSet: { stockDeductionOrderIds: order._id }
+                },
+                { new: true }
+            );
+
+            if (!product) {
+                // Another concurrent request may already have deducted stock.
+                alreadyDeducted = Boolean(await Product.exists({
+                    _id: order.product,
+                    stockDeductionOrderIds: order._id
+                }));
+
+                if (!alreadyDeducted) {
+                    await Order.updateOne(
+                        {
+                            _id: order._id,
+                            directPaymentStatus: "confirming"
+                        },
+                        {
+                            $set: { directPaymentStatus: "submitted" }
+                        }
+                    );
+
+                    return res.status(409).json({
+                        message: "Insufficient stock or product unavailable. Payment was not confirmed."
+                    });
+                }
+            } else if (product.stock === 0) {
+                await Product.updateOne(
+                    { _id: product._id, stock: 0 },
+                    { $set: { status: "sold" } }
+                );
+            }
+        }
+
+        // Finalize. A retry after a crash sees the recorded deduction above
+        // and reaches this step without decrementing stock a second time.
+        const confirmedOrder = await Order.findOneAndUpdate(
+            {
+                _id: order._id,
+                seller: sellerId,
+                status: "pending",
+                directPaymentStatus: "confirming"
+            },
+            {
+                $set: {
+                    directPaymentStatus: "confirmed",
+                    directPaymentConfirmedAt: new Date(),
+                    directPaymentRejectedAt: null,
+                    directPaymentRejectionReason: "",
+                    status: "paid"
+                }
+            },
+            { new: true }
+        );
+
+        if (!confirmedOrder) {
+            // A concurrent request may have completed confirmation first.
+            const latestOrder = await Order.findById(order._id);
+
+            if (
+                latestOrder &&
+                String(latestOrder.seller) === String(sellerId) &&
+                latestOrder.directPaymentStatus === "confirmed"
+            ) {
+                return res.status(200).json({
+                    message: "Payment was already confirmed",
+                    order: latestOrder
+                });
+            }
+
+            return res.status(409).json({
+                message: "Stock deduction is recorded. Refresh the order to check its confirmation status."
+            });
+        }
+
+        return res.status(200).json({
+            message: "Direct payment confirmed and stock updated",
+            order: confirmedOrder
+        });
+    } catch (error) {
+        console.error("Confirm direct payment error:", error);
+        return res.status(500).json({
+            message: "Failed to confirm direct payment. Refresh and retry if needed."
+        });
+    }
+};
+
+
+// SELLER REJECTS A BUYER'S DIRECT PAYMENT SUBMISSION
+const rejectDirectPayment = async (req, res) => {
+    try {
+        const sellerId = req.user.userId;
+        const { orderId } = req.params;
+        const reason = String(req.body.reason || "").trim();
+
+        if (!mongoose.Types.ObjectId.isValid(orderId)) {
+            return res.status(400).json({ message: "Invalid order ID" });
+        }
+
+        if (reason.length < 3 || reason.length > 300) {
+            return res.status(400).json({
+                message: "Rejection reason must contain 3 to 300 characters"
+            });
+        }
+
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: orderId,
+                seller: sellerId,
+                status: "pending",
+                directPaymentStatus: "submitted"
+            },
+            {
+                $set: {
+                    directPaymentStatus: "rejected",
+                    directPaymentRejectedAt: new Date(),
+                    directPaymentRejectionReason: reason
+                }
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!order) {
+            const existing = await Order.findById(orderId);
+
+            if (!existing) {
+                return res.status(404).json({ message: "Order not found" });
+            }
+
+            if (String(existing.seller) !== String(sellerId)) {
+                return res.status(403).json({
+                    message: "Only this product's seller can reject payment"
+                });
+            }
+
+            return res.status(409).json({
+                message: "Only a submitted payment can be rejected"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Payment submission rejected",
+            order
+        });
+    } catch (error) {
+        console.error("Reject direct payment error:", error);
+        return res.status(500).json({
+            message: "Failed to reject direct payment"
+        });
+    }
+};
+
 const getMyOrders = async (req, res) => {
     try {
         const buyerId = req.user.userId;
@@ -584,7 +1025,13 @@ const confirmOrderDelivered = async (req, res) => {
             });
         }
 
-        if (order.paymentStatus !== "successful") {
+        const isDirectPaymentConfirmed =
+            order.directPaymentStatus === "confirmed";
+
+        if (
+            order.paymentStatus !== "successful" &&
+            !isDirectPaymentConfirmed
+        ) {
             return res.status(400).json({
                 message: "Order must be paid before delivery confirmation."
             });
@@ -620,5 +1067,9 @@ module.exports = {
     getMySales,
     getSalesSummary,
     updateOrderStatus,
-    confirmOrderDelivered
+    confirmOrderDelivered,
+    getDirectPaymentDetails,
+    submitDirectPayment,
+    confirmDirectPayment,
+    rejectDirectPayment
 };

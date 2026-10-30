@@ -35,6 +35,17 @@ const userSchema = new mongoose.Schema(
             trim: true
         },
 
+     paymentSettings: {
+
+         mtnMomoNumber: { type: String, default: "" },
+
+         airtelMoneyNumber: { type: String, default: "" },
+
+         updatedAt: { type: Date, default: null }
+
+     },
+
+
      password: {
     type: String,
     required: true

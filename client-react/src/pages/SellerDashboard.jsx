@@ -50,6 +50,14 @@ export default function SellerDashboard() {
   const [promotionMessage, setPromotionMessage] = useState('')
   const [paymentMessage, setPaymentMessage] = useState('')
   const [orderBusy, setOrderBusy] = useState('')
+  const [paymentSettings, setPaymentSettings] = useState({
+    mtnMomoNumber: '',
+    airtelMoneyNumber: '',
+  })
+  const [paymentSettingsLoading, setPaymentSettingsLoading] = useState(true)
+  const [paymentSettingsBusy, setPaymentSettingsBusy] = useState(false)
+  const [paymentSettingsMessage, setPaymentSettingsMessage] = useState('')
+
 
   const loadDashboard = useCallback(async () => {
     setLoading(true)
@@ -92,6 +100,71 @@ export default function SellerDashboard() {
     loadDashboard()
   }, [loadDashboard])
 
+  useEffect(() => {
+    let mounted = true
+
+    async function loadPaymentSettings() {
+      try {
+        const { data } = await api.get('/users/payment-settings')
+
+        if (mounted) {
+          setPaymentSettings({
+            mtnMomoNumber: data.paymentSettings?.mtnMomoNumber || '',
+            airtelMoneyNumber: data.paymentSettings?.airtelMoneyNumber || '',
+          })
+        }
+      } catch (err) {
+        if (mounted) {
+          setPaymentSettingsMessage(
+            err.response?.data?.message ||
+            'Could not load your payment settings.'
+          )
+        }
+      } finally {
+        if (mounted) setPaymentSettingsLoading(false)
+      }
+    }
+
+    loadPaymentSettings()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  async function savePaymentSettings(event) {
+    event.preventDefault()
+
+    if (paymentSettingsBusy) return
+
+    setPaymentSettingsBusy(true)
+    setPaymentSettingsMessage('Saving payment settings...')
+
+    try {
+      const { data } = await api.put('/users/payment-settings', {
+        mtnMomoNumber: paymentSettings.mtnMomoNumber,
+        airtelMoneyNumber: paymentSettings.airtelMoneyNumber,
+      })
+
+      setPaymentSettings({
+        mtnMomoNumber: data.paymentSettings?.mtnMomoNumber || '',
+        airtelMoneyNumber: data.paymentSettings?.airtelMoneyNumber || '',
+      })
+
+      setPaymentSettingsMessage(
+        data.message || 'Payment settings saved successfully.'
+      )
+    } catch (err) {
+      setPaymentSettingsMessage(
+        err.response?.data?.message ||
+        'Could not save payment settings.'
+      )
+    } finally {
+      setPaymentSettingsBusy(false)
+    }
+  }
+
+
   async function updateOrder(order, status) {
     setOrderBusy(order._id)
     setError('')
@@ -117,6 +190,65 @@ export default function SellerDashboard() {
       }
     } finally {
       setOrderBusy('')
+    }
+  }
+
+  async function handleDirectPayment(order, action) {
+    if (!order?._id || orderBusy) return
+
+    let rejectionReason = ""
+
+    if (action === "confirm") {
+      const accepted = window.confirm(
+        "Have you checked your MTN MoMo/Airtel Money wallet and confirmed that the full payment was received? Only confirm after the money is actually in your wallet."
+      )
+
+      if (!accepted) return
+    } else {
+      rejectionReason = window.prompt(
+        "Enter the reason for rejecting this payment (at least 3 characters):"
+      )
+
+      if (rejectionReason === null) return
+
+      rejectionReason = rejectionReason.trim()
+
+      if (rejectionReason.length < 3) {
+        setError("Please provide a valid payment rejection reason.")
+        return
+      }
+    }
+
+    setOrderBusy(order._id)
+    setError("")
+    setNotice("")
+
+    try {
+      const endpoint = action === "confirm"
+        ? `/orders/${encodeURIComponent(order._id)}/direct-payment/confirm`
+        : `/orders/${encodeURIComponent(order._id)}/direct-payment/reject`
+
+      const payload = action === "reject"
+        ? { reason: rejectionReason }
+        : {}
+
+      const { data } = await api.patch(endpoint, payload)
+
+      setNotice(
+        data.message ||
+        (action === "confirm"
+          ? "Direct payment confirmed successfully."
+          : "Direct payment rejected.")
+      )
+
+      await loadDashboard()
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        "Could not process the direct payment action."
+      )
+    } finally {
+      setOrderBusy("")
     }
   }
 
@@ -279,6 +411,76 @@ export default function SellerDashboard() {
 
         {notice && <p className="workspace-success" role="status">{notice}</p>}
         {error && <p className="workspace-error" role="alert">{error}</p>}
+
+        <section className="seller-dashboard-section seller-payment-settings">
+          <div className="seller-section-heading">
+            <div>
+              <h2>Payment Settings</h2>
+              <p>Set the mobile money numbers buyers can use to pay you directly.</p>
+            </div>
+          </div>
+
+          <form className="seller-payment-settings-form" onSubmit={savePaymentSettings}>
+            <p className="seller-payment-settings-note">
+              These numbers are private and are not displayed in your public profile.
+              Keep them up to date so buyers can contact you for payment.
+            </p>
+
+            <div className="seller-payment-settings-grid">
+              <label>
+                <span>MTN MoMo Number</span>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={16}
+                  placeholder="0781234567 or +250781234567"
+                  value={paymentSettings.mtnMomoNumber}
+                  onChange={(event) => setPaymentSettings((current) => ({
+                    ...current,
+                    mtnMomoNumber: event.target.value,
+                  }))}
+                  disabled={paymentSettingsLoading || paymentSettingsBusy}
+                />
+              </label>
+
+              <label>
+                <span>Airtel Money Number</span>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={16}
+                  placeholder="0781234567 or +250781234567"
+                  value={paymentSettings.airtelMoneyNumber}
+                  onChange={(event) => setPaymentSettings((current) => ({
+                    ...current,
+                    airtelMoneyNumber: event.target.value,
+                  }))}
+                  disabled={paymentSettingsLoading || paymentSettingsBusy}
+                />
+              </label>
+            </div>
+
+            {paymentSettingsMessage && (
+              <p className="seller-payment-settings-message" role="status">
+                {paymentSettingsMessage}
+              </p>
+            )}
+
+            <button
+              className="workspace-primary"
+              type="submit"
+              disabled={paymentSettingsLoading || paymentSettingsBusy}
+            >
+              {paymentSettingsLoading
+                ? 'Loading...'
+                : paymentSettingsBusy
+                  ? 'Saving...'
+                  : 'Save Payment Settings'}
+            </button>
+          </form>
+        </section>
 
         <section className="seller-dashboard-section">
           <div className="seller-section-heading">
@@ -444,6 +646,71 @@ export default function SellerDashboard() {
                       <p>Commission: <strong>{money(order.commissionAmount, order.currency)}</strong></p>
                       <p>Your earnings: <strong>{money(order.sellerAmount, order.currency)}</strong></p>
                     </div>
+
+                    {order.directPaymentStatus && order.directPaymentStatus !== "not_started" && (
+                      <div className="seller-direct-payment">
+                        <h4>Direct payment</h4>
+                        <p>
+                          Method: <strong>
+                            {order.directPaymentProvider === "mtn_momo"
+                              ? "MTN MoMo"
+                              : order.directPaymentProvider === "airtel_money"
+                                ? "Airtel Money"
+                                : order.directPaymentProvider || "—"}
+                          </strong>
+                        </p>
+                        <p>
+                          Transaction reference:{" "}
+                          <strong>{order.directPaymentReference || "—"}</strong>
+                        </p>
+                        <p>
+                          Payment status:{" "}
+                          <strong>{order.directPaymentStatus}</strong>
+                        </p>
+
+                        {order.directPaymentStatus === "rejected" &&
+                          order.directPaymentRejectionReason && (
+                            <p className="seller-direct-payment-reason">
+                              Rejection reason: {order.directPaymentRejectionReason}
+                            </p>
+                          )}
+
+                        {order.directPaymentStatus === "submitted" && (
+                          <>
+                            <p className="seller-direct-payment-warning">
+                              Verify the transaction in your actual wallet before confirming.
+                              A reference or screenshot alone is not proof of payment.
+                            </p>
+                            <div className="seller-direct-payment-actions">
+                              <button
+                                type="button"
+                                className="workspace-primary"
+                                disabled={orderBusy === order._id}
+                                onClick={() => handleDirectPayment(order, "confirm")}
+                              >
+                                {orderBusy === order._id
+                                  ? "Processing..."
+                                  : "Confirm payment"}
+                              </button>
+                              <button
+                                type="button"
+                                className="seller-direct-payment-reject"
+                                disabled={orderBusy === order._id}
+                                onClick={() => handleDirectPayment(order, "reject")}
+                              >
+                                Reject payment
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        {order.directPaymentStatus === "confirming" && (
+                          <p className="workspace-muted">
+                            Payment confirmation is being processed.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {nextStatus && (
                       <button

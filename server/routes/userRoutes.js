@@ -89,6 +89,124 @@ router.get(
     }
 );
 
+
+// PRIVATE SELLER PAYMENT SETTINGS
+function normalizeRwandaPaymentNumber(value) {
+    if (value === undefined || value === null || value === "") {
+        return "";
+    }
+
+    if (typeof value !== "string") {
+        return null;
+    }
+
+    const cleaned = value.trim().replace(/[\s()-]/g, "");
+
+    if (/^07\d{8}$/.test(cleaned)) {
+        return "+25" + cleaned;
+    }
+
+    if (/^2507\d{8}$/.test(cleaned)) {
+        return "+" + cleaned;
+    }
+
+    if (/^\+2507\d{8}$/.test(cleaned)) {
+        return cleaned;
+    }
+
+    return null;
+}
+
+// GET MY PAYMENT SETTINGS
+router.get(
+    "/payment-settings",
+    authMiddleware,
+    async (req, res) => {
+        try {
+            const user = await User.findById(req.user.userId)
+                .select("paymentSettings");
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                paymentSettings: {
+                    mtnMomoNumber:
+                        user.paymentSettings?.mtnMomoNumber || "",
+                    airtelMoneyNumber:
+                        user.paymentSettings?.airtelMoneyNumber || ""
+                }
+            });
+        } catch (error) {
+            console.error("Get payment settings error:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to get payment settings"
+            });
+        }
+    }
+);
+
+// SAVE MY PAYMENT SETTINGS
+router.put(
+    "/payment-settings",
+    authMiddleware,
+    async (req, res) => {
+        try {
+            const mtnMomoNumber =
+                normalizeRwandaPaymentNumber(req.body.mtnMomoNumber);
+
+            const airtelMoneyNumber =
+                normalizeRwandaPaymentNumber(req.body.airtelMoneyNumber);
+
+            if (mtnMomoNumber === null || airtelMoneyNumber === null) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Enter valid Rwanda numbers: 07XXXXXXXX or +2507XXXXXXXX"
+                });
+            }
+
+            const user = await User.findById(req.user.userId);
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            user.paymentSettings = {
+                mtnMomoNumber,
+                airtelMoneyNumber,
+                updatedAt: new Date()
+            };
+
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Payment settings saved successfully",
+                paymentSettings: {
+                    mtnMomoNumber,
+                    airtelMoneyNumber
+                }
+            });
+        } catch (error) {
+            console.error("Save payment settings error:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to save payment settings"
+            });
+        }
+    }
+);
+
 // GET CURRENT USER PROFILE
 router.get(
     "/profile",

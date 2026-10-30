@@ -16,6 +16,10 @@ export default function MyOrders() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [confirmingOrderId, setConfirmingOrderId] = useState('')
+  const [directPaymentDetails, setDirectPaymentDetails] = useState({})
+  const [directPaymentSelections, setDirectPaymentSelections] = useState({})
+  const [directPaymentReferences, setDirectPaymentReferences] = useState({})
+  const [directPaymentBusy, setDirectPaymentBusy] = useState('')
 
   async function loadOrders() {
     const { data } = await api.get('/orders/my-orders')
@@ -29,6 +33,82 @@ export default function MyOrders() {
       ))
       .finally(() => setLoading(false))
   }, [])
+
+  async function loadDirectPaymentDetails(orderId) {
+    setError('')
+    setDirectPaymentBusy(orderId)
+
+    try {
+      const { data } = await api.get(
+        `/orders/${encodeURIComponent(orderId)}/direct-payment-details`
+      )
+
+      setDirectPaymentDetails((current) => ({
+        ...current,
+        [orderId]: data,
+      }))
+
+      const methods = data.paymentMethods || []
+      if (methods.length === 1) {
+        setDirectPaymentSelections((current) => ({
+          ...current,
+          [orderId]: methods[0].provider,
+        }))
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        'Could not load the seller payment details.'
+      )
+    } finally {
+      setDirectPaymentBusy('')
+    }
+  }
+
+  async function submitDirectPayment(orderId) {
+    const provider = directPaymentSelections[orderId]
+    const reference = (directPaymentReferences[orderId] || '').trim()
+
+    if (!provider) {
+      setError('Choose the payment method you used.')
+      return
+    }
+
+    if (reference.length < 4 || reference.length > 80) {
+      setError('Enter a transaction reference between 4 and 80 characters.')
+      return
+    }
+
+    setError('')
+    setNotice('')
+    setDirectPaymentBusy(orderId)
+
+    try {
+      const { data } = await api.patch(
+        `/orders/${encodeURIComponent(orderId)}/direct-payment/submit`,
+        { provider, reference }
+      )
+
+      setNotice(data.message || 'Payment reference submitted to the seller.')
+      setDirectPaymentDetails((current) => {
+        const next = { ...current }
+        delete next[orderId]
+        return next
+      })
+      setDirectPaymentReferences((current) => ({
+        ...current,
+        [orderId]: '',
+      }))
+      await loadOrders()
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        'Could not submit the payment reference.'
+      )
+    } finally {
+      setDirectPaymentBusy('')
+    }
+  }
 
   async function handleConfirmDelivery(orderId) {
     const confirmed = window.confirm(
@@ -119,7 +199,148 @@ export default function MyOrders() {
                       </a>
                     )}
                     {paymentStatus && <span>Payment: {statusLabel(paymentStatus)}</span>}
-                    {paymentStatus === 'successful' && orderStatus === 'shipped' && (
+
+                    {order.directPaymentStatus &&
+                      order.directPaymentStatus !== 'not_started' && (
+                        <div className="buyer-direct-payment-status">
+                          <strong>Direct payment: {statusLabel(order.directPaymentStatus)}</strong>
+                          {order.directPaymentProvider && (
+                            <span>
+                              Method: {order.directPaymentProvider === 'mtn_momo'
+                                ? 'MTN MoMo'
+                                : order.directPaymentProvider === 'airtel_money'
+                                  ? 'Airtel Money'
+                                  : statusLabel(order.directPaymentProvider)}
+                            </span>
+                          )}
+                          {order.directPaymentReference && (
+                            <span>Reference: {order.directPaymentReference}</span>
+                          )}
+                          {order.directPaymentStatus === 'rejected' &&
+                            order.directPaymentRejectionReason && (
+                              <p className="workspace-error">
+                                Seller's reason: {order.directPaymentRejectionReason}
+                              </p>
+                            )}
+                          {order.directPaymentStatus === 'submitted' && (
+                            <p className="workspace-muted">
+                              Your reference was sent. Wait for the seller to verify the payment.
+                            </p>
+                          )}
+                          {order.directPaymentStatus === 'confirmed' && (
+                            <p className="workspace-success">
+                              The seller confirmed your payment.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                    {order.status === 'pending' &&
+                      (!order.directPaymentStatus ||
+                        ['not_started', 'rejected'].includes(order.directPaymentStatus)) && (
+                        <div className="buyer-direct-payment">
+                          {!directPaymentDetails[order._id] ? (
+                            <button
+                              type="button"
+                              className="workspace-primary"
+                              disabled={directPaymentBusy === order._id}
+                              onClick={() => loadDirectPaymentDetails(order._id)}
+                            >
+                              {directPaymentBusy === order._id
+                                ? 'Loading payment details...'
+                                : order.directPaymentStatus === 'rejected'
+                                  ? 'Try payment again'
+                                  : 'Pay seller directly'}
+                            </button>
+                          ) : (
+                            <>
+                              <h3>Pay the seller</h3>
+                              <p>
+                                Seller: <strong>
+                                  {directPaymentDetails[order._id].seller?.name || 'Seller'}
+                                </strong>
+                              </p>
+                              <p>
+                                Amount: <strong>
+                                  {price(
+                                    directPaymentDetails[order._id].amount,
+                                    directPaymentDetails[order._id].currency
+                                  )}
+                                </strong>
+                              </p>
+                              <p className="workspace-muted">
+                                Send the exact amount to one of the seller's numbers below.
+                                Then enter the transaction reference from your payment confirmation.
+                              </p>
+
+                              <div className="buyer-direct-payment-methods">
+                                {(directPaymentDetails[order._id].paymentMethods || []).map((method) => (
+                                  <label key={method.provider}>
+                                    <input
+                                      type="radio"
+                                      name={`payment-${order._id}`}
+                                      value={method.provider}
+                                      checked={directPaymentSelections[order._id] === method.provider}
+                                      onChange={() => setDirectPaymentSelections((current) => ({
+                                        ...current,
+                                        [order._id]: method.provider,
+                                      }))}
+                                    />
+                                    <span>
+                                      <strong>
+                                        {method.provider === 'mtn_momo'
+                                          ? 'MTN MoMo'
+                                          : 'Airtel Money'}
+                                      </strong>
+                                      {' — '}
+                                      {method.number}
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+
+                              {(directPaymentDetails[order._id].paymentMethods || []).length === 0 && (
+                                <p className="workspace-error">
+                                  The seller has not configured a payment number yet.
+                                </p>
+                              )}
+
+                              <label className="buyer-direct-payment-reference">
+                                Transaction reference
+                                <input
+                                  type="text"
+                                  minLength={4}
+                                  maxLength={80}
+                                  value={directPaymentReferences[order._id] || ''}
+                                  onChange={(event) => setDirectPaymentReferences((current) => ({
+                                    ...current,
+                                    [order._id]: event.target.value,
+                                  }))}
+                                  placeholder="Enter your transaction reference"
+                                />
+                              </label>
+
+                              <button
+                                type="button"
+                                className="workspace-primary"
+                                disabled={
+                                  directPaymentBusy === order._id ||
+                                  !(directPaymentDetails[order._id].paymentMethods || []).length
+                                }
+                                onClick={() => submitDirectPayment(order._id)}
+                              >
+                                {directPaymentBusy === order._id
+                                  ? 'Submitting...'
+                                  : 'Submit payment reference'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                    {(paymentStatus === 'successful' ||
+                      order.directPaymentStatus === 'confirmed') &&
+                      orderStatus === 'shipped' && (
                       <button
                         className="workspace-primary"
                         type="button"
@@ -141,3 +362,6 @@ export default function MyOrders() {
     </main>
   )
 }
+
+
+<style-placeholder-do-not-use />

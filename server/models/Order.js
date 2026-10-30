@@ -89,6 +89,52 @@ const orderSchema = new mongoose.Schema(
             default: "pending"
         },
 
+        directPaymentProvider: {
+            type: String,
+            enum: ["mtn_momo", "airtel_money", null],
+            default: null
+        },
+
+        directPaymentReference: {
+            type: String,
+            trim: true,
+            default: null
+        },
+
+        directPaymentStatus: {
+            type: String,
+            enum: [
+                "not_started",
+                "submitted",
+                "confirming",
+                "confirmed",
+                "rejected"
+            ],
+            default: "not_started",
+            index: true
+        },
+
+        directPaymentSubmittedAt: {
+            type: Date,
+            default: null
+        },
+
+        directPaymentConfirmedAt: {
+            type: Date,
+            default: null
+        },
+
+        directPaymentRejectedAt: {
+            type: Date,
+            default: null
+        },
+
+        directPaymentRejectionReason: {
+            type: String,
+            trim: true,
+            default: ""
+        },
+
         status: {
             type: String,
             enum: [
