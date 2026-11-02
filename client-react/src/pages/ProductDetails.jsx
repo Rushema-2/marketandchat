@@ -25,6 +25,13 @@ function ProductDetails() {
   const [orderResult, setOrderResult] = useState(null)
   const [paying, setPaying] = useState(false)
   const [paymentResult, setPaymentResult] = useState(null)
+  const [directPaymentDetails, setDirectPaymentDetails] = useState(null)
+  const [directPaymentLoading, setDirectPaymentLoading] = useState(false)
+  const [directPaymentProvider, setDirectPaymentProvider] = useState('')
+  const [directPaymentReference, setDirectPaymentReference] = useState('')
+  const [directPaymentSubmitting, setDirectPaymentSubmitting] = useState(false)
+  const [directPaymentResult, setDirectPaymentResult] = useState(null)
+  const [directPaymentError, setDirectPaymentError] = useState('')
   const [reviewsData, setReviewsData] = useState({
     reviews: [],
     averageRating: 0,
@@ -219,6 +226,43 @@ function ProductDetails() {
       setActionMessage(
         'Your order has been created. Payment has not been started.'
       )
+
+      if (order?._id) {
+        setDirectPaymentLoading(true)
+        setDirectPaymentError('')
+        setDirectPaymentDetails(null)
+        setDirectPaymentProvider('')
+        setDirectPaymentReference('')
+        setDirectPaymentResult(null)
+
+        try {
+          const detailsResponse = await api.get(
+            `/orders/${encodeURIComponent(order._id)}/direct-payment-details`
+          )
+
+          const details = detailsResponse.data || {}
+          const methods = Array.isArray(details.paymentMethods)
+            ? details.paymentMethods
+            : []
+
+          setDirectPaymentDetails(details)
+
+          if (methods.length > 0) {
+            setDirectPaymentProvider(methods[0].provider)
+          } else {
+            setDirectPaymentError(
+              'The seller has not added an MTN MoMo or Airtel Money number yet.'
+            )
+          }
+        } catch (detailsErr) {
+          setDirectPaymentError(
+            detailsErr.response?.data?.message ||
+            'Could not load the seller payment details. Please try again.'
+          )
+        } finally {
+          setDirectPaymentLoading(false)
+        }
+      }
     } catch (err) {
       setActionError(
         err.response?.data?.message ||
@@ -226,6 +270,57 @@ function ProductDetails() {
       )
     } finally {
       setOrdering(false)
+    }
+  }
+
+  async function handleSubmitDirectPayment(event) {
+    event.preventDefault()
+    setDirectPaymentError('')
+    setDirectPaymentResult(null)
+
+    if (!requireLogin()) return
+
+    if (!orderResult?._id) {
+      setDirectPaymentError('Create an order before submitting payment.')
+      return
+    }
+
+    if (!directPaymentProvider) {
+      setDirectPaymentError('Please choose a payment method.')
+      return
+    }
+
+    const reference = directPaymentReference.trim()
+
+    if (reference.length < 4 || reference.length > 80) {
+      setDirectPaymentError(
+        'Transaction reference must contain 4 to 80 characters.'
+      )
+      return
+    }
+
+    setDirectPaymentSubmitting(true)
+
+    try {
+      const response = await api.patch(
+        `/orders/${encodeURIComponent(orderResult._id)}/direct-payment/submit`,
+        {
+          provider: directPaymentProvider,
+          reference,
+        }
+      )
+
+      setDirectPaymentResult(response.data || {})
+      setActionMessage(
+        'Payment reference submitted. The seller must verify receipt before the order is confirmed.'
+      )
+    } catch (err) {
+      setDirectPaymentError(
+        err.response?.data?.message ||
+        'Could not submit the payment reference. Please check and try again.'
+      )
+    } finally {
+      setDirectPaymentSubmitting(false)
     }
   }
 
@@ -451,6 +546,11 @@ const videoUrl = videoPath
                 setActionMessage('')
                 setOrderResult(null)
                 setPaymentResult(null)
+                setDirectPaymentDetails(null)
+                setDirectPaymentProvider('')
+                setDirectPaymentReference('')
+                setDirectPaymentResult(null)
+                setDirectPaymentError('')
               }}
               disabled={!inStock || ordering || isSeller}
             />
@@ -489,9 +589,125 @@ const videoUrl = videoPath
               <p>Total: {formatPrice(orderResult.totalAmount)}</p>
               <p>Order status: {orderResult.status || 'pending'}</p>
 
+              <div className="details-direct-payment">
+                <h4>Pay the seller directly</h4>
+                <p>
+                  Choose a payment method configured by the seller. Pay using
+                  your mobile money application, then submit the transaction
+                  reference below.
+                </p>
+
+                {directPaymentLoading && (
+                  <p>Loading seller payment methods...</p>
+                )}
+
+                {directPaymentDetails?.paymentMethods?.length > 0 &&
+                  !directPaymentResult && (
+                    <form onSubmit={handleSubmitDirectPayment}>
+                      <label htmlFor="direct-payment-provider">
+                        Payment method
+                      </label>
+                      <select
+                        id="direct-payment-provider"
+                        value={directPaymentProvider}
+                        onChange={(event) => {
+                          setDirectPaymentProvider(event.target.value)
+                          setDirectPaymentError('')
+                        }}
+                        disabled={directPaymentSubmitting}
+                        required
+                      >
+                        {directPaymentDetails.paymentMethods.map((method) => (
+                          <option
+                            key={method.provider}
+                            value={method.provider}
+                          >
+                            {method.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      {directPaymentDetails.paymentMethods
+                        .filter((method) =>
+                          method.provider === directPaymentProvider
+                        )
+                        .map((method) => (
+                          <div key={method.provider}>
+                            <p>
+                              **{method.label} number:** {method.number}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                navigator.clipboard?.writeText(method.number)
+                              }
+                            >
+                              Copy payment number
+                            </button>
+                          </div>
+                        ))}
+
+                      <label htmlFor="direct-payment-reference">
+                        Transaction reference
+                      </label>
+                      <input
+                        id="direct-payment-reference"
+                        type="text"
+                        minLength={4}
+                        maxLength={80}
+                        value={directPaymentReference}
+                        onChange={(event) =>
+                          setDirectPaymentReference(event.target.value)
+                        }
+                        placeholder="Enter the reference from your payment"
+                        required
+                        disabled={directPaymentSubmitting}
+                      />
+
+                      <button
+                        type="submit"
+                        className="details-buy-button"
+                        disabled={
+                          directPaymentSubmitting ||
+                          !directPaymentProvider ||
+                          directPaymentReference.trim().length < 4
+                        }
+                      >
+                        {directPaymentSubmitting
+                          ? 'Submitting reference...'
+                          : 'I have paid – Submit reference'}
+                      </button>
+                    </form>
+                  )}
+
+                {directPaymentError && (
+                  <p className="details-action-error" role="alert">
+                    {directPaymentError}
+                  </p>
+                )}
+
+                {directPaymentResult && (
+                  <div className="details-payment-result" role="status">
+                    <h4>Payment reference submitted</h4>
+                    <p>
+                      Method: {directPaymentResult.directPaymentProvider ===
+                      'airtel_money' ? 'Airtel Money' : 'MTN MoMo'}
+                    </p>
+                    <p>
+                      Reference: {directPaymentResult.directPaymentReference}
+                    </p>
+                    <p>Status: Awaiting seller confirmation</p>
+                    <p>
+                      Your order is not yet confirmed as paid. The seller must
+                      verify receipt before confirming it.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {!paymentResult && (
                 <>
-                  <p>Payment has not been started. You have not been charged.</p>
+                  <p>MTN MoMo Sandbox testing is also available below. It is separate from direct payment.</p>
                   <button
                     type="button"
                     className="details-buy-button"
