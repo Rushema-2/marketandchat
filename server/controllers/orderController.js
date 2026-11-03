@@ -907,13 +907,6 @@ const getSalesSummary = async (req, res) => {
 
 const updateOrderStatus = async (req, res) => {
     try {
-        if (String(process.env.MOMO_ENV || "").toLowerCase() === "sandbox") {
-            return res.status(409).json({
-                message: "Sandbox mode: real order fulfillment is disabled.",
-                paymentMode: "sandbox"
-            });
-        }
-
         const sellerId = req.user.userId;
         const { orderId } = req.params;
         const { status } = req.body;
@@ -945,6 +938,19 @@ const updateOrderStatus = async (req, res) => {
         if (!order) {
             return res.status(404).json({
                 message: "Order not found"
+            });
+        }
+
+        if (
+            String(process.env.MOMO_ENV || "").toLowerCase() === "sandbox" &&
+            !(
+                order.directPaymentStatus === "confirmed" &&
+                ["mtn_momo", "airtel_money"].includes(order.directPaymentProvider)
+            )
+        ) {
+            return res.status(409).json({
+                message: "Sandbox mode: only seller-confirmed Direct Payments can be fulfilled.",
+                paymentMode: "sandbox"
             });
         }
 
