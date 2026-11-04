@@ -2,6 +2,8 @@ const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Review = require("../models/Review");
+const Service = require("../models/Service");
+const Video = require("../models/Video");
 
 const getOverview = async (req, res) => {
     try {
@@ -16,7 +18,14 @@ const getOverview = async (req, res) => {
             pendingOrders,
             completedOrders,
             totalReviews,
-            ratingSummary
+            ratingSummary,
+            totalServices,
+            activeServices,
+            closedServices,
+            hiddenServices,
+            totalVideos,
+            activeVideos,
+            hiddenVideos
         ] = await Promise.all([
             User.countDocuments(),
             User.countDocuments({ role: "admin" }),
@@ -35,7 +44,14 @@ const getOverview = async (req, res) => {
                         averageRating: { $avg: "$rating" }
                     }
                 }
-            ])
+            ]),
+            Service.countDocuments(),
+            Service.countDocuments({ status: "active" }),
+            Service.countDocuments({ status: "closed" }),
+            Service.countDocuments({ status: "hidden" }),
+            Video.countDocuments(),
+            Video.countDocuments({ status: "active" }),
+            Video.countDocuments({ status: "hidden" })
         ]);
 
         return res.status(200).json({
@@ -59,6 +75,17 @@ const getOverview = async (req, res) => {
                 averageRating: ratingSummary.length
                     ? Number(ratingSummary[0].averageRating.toFixed(2))
                     : 0
+            },
+            services: {
+                total: totalServices,
+                active: activeServices,
+                closed: closedServices,
+                hidden: hiddenServices
+            },
+            videos: {
+                total: totalVideos,
+                active: activeVideos,
+                hidden: hiddenVideos
             }
         });
     } catch (error) {
@@ -212,10 +239,113 @@ const getReviews = async (req, res) => {
     }
 };
 
+const getServices = async (req, res) => {
+    try {
+        const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+
+        const [services, total] = await Promise.all([
+            Service.find()
+                .populate("owner", "firstName lastName email phone")
+                .sort({ createdAt: -1 })
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .lean(),
+            Service.countDocuments()
+        ]);
+
+        return res.status(200).json({
+            services,
+            pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+        });
+    } catch (error) {
+        console.error("Admin services error:", error.message);
+        return res.status(500).json({ message: "Unable to load services" });
+    }
+};
+
+const getVideos = async (req, res) => {
+    try {
+        const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 20));
+
+        const [videos, total] = await Promise.all([
+            Video.find()
+                .populate("owner", "firstName lastName email")
+                .sort({ createdAt: -1 })
+                .skip((page - 1) * limit)
+                .limit(limit)
+                .lean(),
+            Video.countDocuments()
+        ]);
+
+        return res.status(200).json({
+            videos,
+            pagination: { page, limit, total, pages: Math.ceil(total / limit) }
+        });
+    } catch (error) {
+        console.error("Admin videos error:", error.message);
+        return res.status(500).json({ message: "Unable to load videos" });
+    }
+};
+
+
+const updateStatus = async (req, res, Model, allowedStatuses, label) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!require("mongoose").Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid item ID" });
+        }
+
+        if (!allowedStatuses.includes(status)) {
+            return res.status(400).json({
+                message: `Invalid ${label} status`,
+                allowedStatuses
+            });
+        }
+
+        const item = await Model.findByIdAndUpdate(
+            id,
+            { $set: { status } },
+            { new: true, runValidators: true }
+        );
+
+        if (!item) {
+            return res.status(404).json({ message: `${label} not found` });
+        }
+
+        return res.status(200).json({
+            message: `${label} status updated successfully`,
+            item
+        });
+    } catch (error) {
+        console.error(`Admin ${label} status update error:`, error.message);
+        return res.status(500).json({
+            message: `Unable to update ${label} status`
+        });
+    }
+};
+
+const updateProductStatus = (req, res) =>
+    updateStatus(req, res, Product, ["active", "hidden"], "Product");
+
+const updateServiceStatus = (req, res) =>
+    updateStatus(req, res, Service, ["active", "closed", "hidden"], "Service");
+
+const updateVideoStatus = (req, res) =>
+    updateStatus(req, res, Video, ["active", "hidden"], "Video");
+
 module.exports = {
     getOverview,
     getUsers,
     getProducts,
     getOrders,
-    getReviews
+    getReviews,
+    getServices,
+    getVideos,
+    updateProductStatus,
+    updateServiceStatus,
+    updateVideoStatus
 };

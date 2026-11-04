@@ -9,6 +9,8 @@ const sections = [
   { id: 'products', label: 'Products' },
   { id: 'orders', label: 'Orders' },
   { id: 'reviews', label: 'Reviews' },
+  { id: 'services', label: 'Services' },
+  { id: 'videos', label: 'NEXUS TV' },
 ]
 
 const money = (amount, currency = 'RWF') =>
@@ -57,6 +59,7 @@ export default function AdminDashboard() {
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [updatingId, setUpdatingId] = useState('')
 
   const loadOverview = useCallback(async () => {
     setLoading(true)
@@ -110,6 +113,47 @@ export default function AdminDashboard() {
     setError('')
   }
 
+  async function updateItemStatus(item, target, nextStatus) {
+    if (!item?._id || !nextStatus || nextStatus === item.status) return
+
+    const confirmed = window.confirm(
+      `Are you sure you want to change this status from "${item.status}" to "${nextStatus}"?`
+    )
+    if (!confirmed) return
+
+    setUpdatingId(item._id)
+    setError('')
+
+    try {
+      await api.patch(`/admin/${target}/${item._id}/status`, {
+        status: nextStatus,
+      })
+      await loadList(section, page)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update item status.')
+    } finally {
+      setUpdatingId('')
+    }
+  }
+
+  function renderStatusSelect(item, target, allowedStatuses) {
+    return (
+      <select
+        className="admin-action-select"
+        value={item.status || ''}
+        disabled={updatingId === item._id}
+        onChange={(event) => updateItemStatus(item, target, event.target.value)}
+        aria-label={`Change status for ${item.title || 'item'}`}
+      >
+        {allowedStatuses.map((status) => (
+          <option key={status} value={status}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </option>
+        ))}
+      </select>
+    )
+  }
+
   function renderUsers() {
     return (
       <div className="admin-table-wrap"><table className="admin-table">
@@ -128,13 +172,18 @@ export default function AdminDashboard() {
   function renderProducts() {
     return (
       <div className="admin-table-wrap"><table className="admin-table">
-        <thead><tr><th>Product</th><th>Price</th><th>Seller</th><th>Location</th><th>Status</th></tr></thead>
+        <thead><tr><th>Product</th><th>Price</th><th>Seller</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>{items.map((product) => (
           <tr key={product._id}>
             <td>{product.title || 'Untitled'}</td>
             <td>{money(product.price, product.currency)}</td>
             <td>{personName(product.seller)}</td><td>{product.location || '—'}</td>
             <td><Status value={product.status} /></td>
+            <td>
+              {product.status === 'sold'
+                ? '—'
+                : renderStatusSelect(product, 'products', ['active', 'hidden'])}
+            </td>
           </tr>
         ))}</tbody>
       </table></div>
@@ -153,6 +202,47 @@ export default function AdminDashboard() {
             <td>{money(order.totalAmount, order.currency)}</td>
             <td><Status value={order.paymentStatus} /></td>
             <td><Status value={order.status} /></td>
+          </tr>
+        ))}</tbody>
+      </table></div>
+    )
+  }
+
+  function renderServices() {
+    return (
+      <div className="admin-table-wrap"><table className="admin-table">
+        <thead><tr><th>Service / Job</th><th>Type</th><th>Category</th><th>Owner</th><th>Location</th><th>Price / Salary</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>{items.map((service) => (
+          <tr key={service._id}>
+            <td>{service.title || 'Untitled'}</td>
+            <td><Status value={service.type} /></td>
+            <td>{service.category || '—'}</td>
+            <td>{personName(service.owner)}</td>
+            <td>{service.location || '—'}</td>
+            <td>{service.price != null ? money(service.price, service.currency) : service.salary || '—'}</td>
+            <td><Status value={service.status} /></td>
+            <td>{dateText(service.createdAt)}</td>
+            <td>{renderStatusSelect(service, 'services', ['active', 'closed', 'hidden'])}</td>
+          </tr>
+        ))}</tbody>
+      </table></div>
+    )
+  }
+
+  function renderVideos() {
+    return (
+      <div className="admin-table-wrap"><table className="admin-table">
+        <thead><tr><th>Video</th><th>Category</th><th>Owner</th><th>Views</th><th>Downloads</th><th>Status</th><th>Uploaded</th><th>Actions</th></tr></thead>
+        <tbody>{items.map((video) => (
+          <tr key={video._id}>
+            <td>{video.title || 'Untitled'}</td>
+            <td>{video.category || '—'}</td>
+            <td>{personName(video.owner)}</td>
+            <td>{Number(video.views || 0).toLocaleString()}</td>
+            <td><Status value={video.allowDownload ? 'allowed' : 'disabled'} /></td>
+            <td><Status value={video.status} /></td>
+            <td>{dateText(video.createdAt)}</td>
+            <td>{renderStatusSelect(video, 'videos', ['active', 'hidden'])}</td>
           </tr>
         ))}</tbody>
       </table></div>
@@ -192,6 +282,10 @@ export default function AdminDashboard() {
             <StatCard label="Sold products" value={overview.products?.sold} />
             <StatCard label="Hidden products" value={overview.products?.hidden} />
             <StatCard label="Completed orders" value={overview.orders?.completed} />
+            <StatCard label="Total services" value={overview.services?.total} detail={`${overview.services?.active ?? 0} active`} />
+            <StatCard label="Closed services" value={overview.services?.closed} />
+            <StatCard label="NEXUS TV videos" value={overview.videos?.total} detail={`${overview.videos?.active ?? 0} active`} />
+            <StatCard label="Hidden videos" value={overview.videos?.hidden} />
           </div>
           <div className="admin-overview-note">
             <strong>Platform overview</strong>
@@ -206,6 +300,8 @@ export default function AdminDashboard() {
     if (section === 'products') return renderProducts()
     if (section === 'orders') return renderOrders()
     if (section === 'reviews') return renderReviews()
+    if (section === 'services') return renderServices()
+    if (section === 'videos') return renderVideos()
     return null
   }
 

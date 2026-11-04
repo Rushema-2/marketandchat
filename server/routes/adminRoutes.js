@@ -7,7 +7,12 @@ const {
     getUsers,
     getProducts,
     getOrders,
-    getReviews
+    getReviews,
+    getServices,
+    getVideos,
+    updateProductStatus,
+    updateServiceStatus,
+    updateVideoStatus
 } = require("../controllers/adminController");
 
 const router = express.Router();
@@ -20,5 +25,10 @@ router.get("/users", getUsers);
 router.get("/products", getProducts);
 router.get("/orders", getOrders);
 router.get("/reviews", getReviews);
+router.get("/services", getServices);
+router.get("/videos", getVideos);
+router.patch("/products/:id/status", updateProductStatus);
+router.patch("/services/:id/status", updateServiceStatus);
+router.patch("/videos/:id/status", updateVideoStatus);
 
 module.exports = router;
