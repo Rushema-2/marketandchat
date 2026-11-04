@@ -62,5 +62,30 @@ const imageUpload = multer({
     }
 });
 
+const videoUpload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        const allowedVideoTypes = [
+            "video/mp4",
+            "video/quicktime",
+            "video/webm",
+            "video/x-msvideo"
+        ];
+
+        if (allowedVideoTypes.includes(file.mimetype)) {
+            return cb(null, true);
+        }
+
+        return cb(
+            new Error("Only MP4, MOV, WEBM and AVI videos are allowed"),
+            false
+        );
+    },
+    limits: {
+        fileSize: 100 * 1024 * 1024
+    }
+});
+
 module.exports = upload;
 module.exports.imageUpload = imageUpload;
+module.exports.videoUpload = videoUpload;
