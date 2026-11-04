@@ -5,6 +5,7 @@ import { loginUser, googleLoginUser } from './services/authService'
 import { GoogleLogin } from '@react-oauth/google'
 import Register from './components/Register'
 import Marketplace from './pages/Marketplace'
+import Services from './pages/Services'
 import Favorites from './pages/Favorites'
 import ProductDetails from './pages/ProductDetails'
 import SellerStore from './pages/SellerStore'
@@ -275,6 +276,7 @@ function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/services" element={<Services />} />
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/store/:sellerId" element={<SellerStore />} />

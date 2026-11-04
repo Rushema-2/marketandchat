@@ -162,6 +162,7 @@ function Marketplace() {
 
         <nav className="market-nav" aria-label="Main navigation">
           <a className="active" href="/marketplace">Marketplace</a>
+          <a href="/services">Services</a>
           <a href="/messages">Messages</a>
           <a href="/favorites">❤️ Favorites</a>
           <NotificationBell />

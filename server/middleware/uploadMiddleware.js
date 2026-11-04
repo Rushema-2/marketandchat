@@ -49,4 +49,18 @@ const upload = multer({
     }
 });
 
+const imageUpload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith("image/")) {
+            return cb(null, true);
+        }
+        return cb(new Error("Only image files are allowed for services"), false);
+    },
+    limits: {
+        fileSize: 10 * 1024 * 1024
+    }
+});
+
 module.exports = upload;
+module.exports.imageUpload = imageUpload;
