@@ -58,3 +58,6 @@
 .admin-action-select{min-width:112px;padding:8px 10px;border:1px solid #dce5e7;border-radius:8px;background:#fff;color:#34434c;font-size:12px;font-weight:700;cursor:pointer}
 .admin-action-select:focus{outline:2px solid #087e70;outline-offset:2px}
 .admin-action-select:disabled{opacity:.5;cursor:wait}
+
+.admin-review-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+@media(max-width:480px){.admin-review-actions{align-items:flex-start;flex-direction:column}}

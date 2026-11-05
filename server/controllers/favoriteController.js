@@ -21,7 +21,12 @@ async function getFavorites(req, res) {
 
     const summaries = productIds.length
       ? await Review.aggregate([
-          { $match: { product: { $in: productIds } } },
+          {
+            $match: {
+              product: { $in: productIds },
+              $or: [{ status: "active" }, { status: { $exists: false } }],
+            },
+          },
           {
             $group: {
               _id: "$product",

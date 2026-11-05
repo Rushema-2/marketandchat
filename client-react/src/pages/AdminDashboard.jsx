@@ -260,6 +260,14 @@ export default function AdminDashboard() {
             </div>
             <p>{review.comment || 'No written comment.'}</p>
             <small>By {personName(review.buyer)} · {dateText(review.createdAt)}</small>
+            <div className="admin-review-actions">
+              <Status value={review.status || 'active'} />
+              {renderStatusSelect(
+                { ...review, status: review.status || 'active' },
+                'reviews',
+                ['active', 'hidden']
+              )}
+            </div>
           </article>
         ))}
       </div>

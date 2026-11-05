@@ -25,10 +25,13 @@ const getProductReviews = async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
-        const total = reviews.length;
+        const visibleReviews = reviews.filter(
+            review => review.status === "active" || !review.status
+        );
+        const total = visibleReviews.length;
         const averageRating = total
             ? Math.round(
-                (reviews.reduce((sum, review) => sum + review.rating, 0) / total) * 10
+                (visibleReviews.reduce((sum, review) => sum + review.rating, 0) / total) * 10
               ) / 10
             : 0;
 
@@ -45,7 +48,10 @@ const getProductReviews = async (req, res) => {
                 eligibleOrders = await Order.find({
                     buyer: req.user.userId,
                     product: productId,
-                    paymentStatus: "successful",
+                    $or: [
+                        { paymentStatus: "successful" },
+                        { directPaymentStatus: "confirmed" }
+                    ],
                     status: "delivered"
                 })
                     .select("_id createdAt")
@@ -55,7 +61,7 @@ const getProductReviews = async (req, res) => {
         }
 
         return res.json({
-            reviews,
+            reviews: visibleReviews,
             averageRating,
             reviewCount: total,
             myReview,
@@ -115,7 +121,10 @@ const saveProductReview = async (req, res) => {
                 _id: orderId,
                 buyer: buyerId,
                 product: productId,
-                paymentStatus: "successful",
+                $or: [
+                    { paymentStatus: "successful" },
+                    { directPaymentStatus: "confirmed" }
+                ],
                 status: "delivered"
             }).select("_id");
 

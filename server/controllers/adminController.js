@@ -39,6 +39,14 @@ const getOverview = async (req, res) => {
             Review.countDocuments(),
             Review.aggregate([
                 {
+                    $match: {
+                        $or: [
+                            { status: "active" },
+                            { status: { $exists: false } }
+                        ]
+                    }
+                },
+                {
                     $group: {
                         _id: null,
                         averageRating: { $avg: "$rating" }
@@ -222,8 +230,13 @@ const getReviews = async (req, res) => {
             Review.countDocuments()
         ]);
 
+        const normalizedReviews = reviews.map(review => ({
+            ...review,
+            status: review.status || "active"
+        }));
+
         return res.status(200).json({
-            reviews,
+            reviews: normalizedReviews,
             pagination: {
                 page,
                 limit,
@@ -337,6 +350,9 @@ const updateServiceStatus = (req, res) =>
 const updateVideoStatus = (req, res) =>
     updateStatus(req, res, Video, ["active", "hidden"], "Video");
 
+const updateReviewStatus = (req, res) =>
+    updateStatus(req, res, Review, ["active", "hidden"], "Review");
+
 module.exports = {
     getOverview,
     getUsers,
@@ -347,5 +363,6 @@ module.exports = {
     getVideos,
     updateProductStatus,
     updateServiceStatus,
-    updateVideoStatus
+    updateVideoStatus,
+    updateReviewStatus
 };

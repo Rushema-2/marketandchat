@@ -34,6 +34,12 @@ const reviewSchema = new mongoose.Schema(
             trim: true,
             maxlength: 1500,
             default: ""
+        },
+        status: {
+            type: String,
+            enum: ["active", "hidden"],
+            default: "active",
+            index: true
         }
     },
     { timestamps: true }

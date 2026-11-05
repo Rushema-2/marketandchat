@@ -12,7 +12,8 @@ const {
     getVideos,
     updateProductStatus,
     updateServiceStatus,
-    updateVideoStatus
+    updateVideoStatus,
+    updateReviewStatus
 } = require("../controllers/adminController");
 
 const router = express.Router();
@@ -30,5 +31,6 @@ router.get("/videos", getVideos);
 router.patch("/products/:id/status", updateProductStatus);
 router.patch("/services/:id/status", updateServiceStatus);
 router.patch("/videos/:id/status", updateVideoStatus);
+router.patch("/reviews/:id/status", updateReviewStatus);
 
 module.exports = router;

@@ -153,7 +153,11 @@ const filter = {
             reviewSummaries = await Review.aggregate([
                 {
                     $match: {
-                        product: { $in: productIds }
+                        product: { $in: productIds },
+                        $or: [
+                            { status: "active" },
+                            { status: { $exists: false } }
+                        ]
                     }
                 },
                 {
@@ -343,7 +347,15 @@ const getSellerProducts = async (req, res) => {
 
         const summaries = productIds.length
             ? await Review.aggregate([
-                { $match: { product: { $in: productIds } } },
+                {
+                    $match: {
+                        product: { $in: productIds },
+                        $or: [
+                            { status: "active" },
+                            { status: { $exists: false } }
+                        ]
+                    }
+                },
                 {
                     $group: {
                         _id: "$product",
