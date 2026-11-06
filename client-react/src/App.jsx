@@ -17,6 +17,7 @@ import MyProducts from './pages/MyProducts'
 import Notifications from './pages/Notifications'
 import SellerDashboard from './pages/SellerDashboard'
 import AdminDashboard from './pages/AdminDashboard'
+import NRChatWidget from './components/NRChatWidget'
 import './App.css'
 
 function LoginPage() {
@@ -292,6 +293,7 @@ function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <NRChatWidget />
     </BrowserRouter>
   )
 }
