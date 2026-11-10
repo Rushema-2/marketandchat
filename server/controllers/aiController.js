@@ -440,10 +440,10 @@ ${JSON.stringify(marketplaceData)}
                 stream: false,
                 keep_alive: "5m",
                 options: {
-                    num_predict: 600
+                    num_predict: 250
                 }
             }),
-            signal: AbortSignal.timeout(120000)
+            signal: AbortSignal.timeout(180000)
         });
 
         const result = await response.json();
