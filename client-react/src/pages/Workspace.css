@@ -35,6 +35,7 @@
 .message-panel{display:flex;flex-direction:column;min-width:0}
 .message-panel-heading{padding:20px;border-bottom:1px solid #e5ebed}
 .message-panel-heading h2{margin:0}
+.message-back-button{display:none}
 .message-list{flex:1;min-height:300px;max-height:560px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:20px}
 .message-bubble{align-self:flex-start;max-width:80%;padding:11px 13px;border-radius:12px 12px 12px 3px;background:#f0f3f4;overflow-wrap:anywhere}
 .message-bubble.mine{align-self:flex-end;background:#dff5e9;border-radius:12px 12px 3px 12px}
@@ -76,7 +77,27 @@
 .my-product-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}
 .my-product-actions a{font-size:13px;font-weight:700;text-decoration:none}
 @media(max-width:850px){.workspace-header{align-items:flex-start;flex-direction:column;gap:12px}.workspace-nav{width:100%}.workspace-content{padding:26px 16px 45px}.orders-list{grid-template-columns:1fr}.my-products-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.workspace-nav{gap:2px}.workspace-nav a{font-size:12px;padding:9px 8px}.workspace-title{align-items:flex-start;flex-direction:column}.messages-layout{grid-template-columns:1fr}.conversation-list{border-right:0;border-bottom:1px solid #e5ebed}.message-list{min-height:240px}.my-products-grid{grid-template-columns:1fr}.product-form-grid{grid-template-columns:1fr}.order-image{width:80px;height:80px}.workspace-header{padding:14px 16px}}
+@media(max-width:600px){
+.workspace-nav{gap:2px}
+.workspace-nav a{font-size:12px;padding:9px 8px}
+.workspace-title{align-items:flex-start;flex-direction:column}
+.messages-layout{grid-template-columns:minmax(0,1fr)}
+.messages-layout:not(.mobile-chat-open) .message-panel{display:none}
+.messages-layout.mobile-chat-open .conversation-list{display:none}
+.messages-layout.mobile-chat-open{height:calc(100dvh - 220px);min-height:420px;grid-template-columns:minmax(0,1fr)}
+.conversation-list{border-right:0;border-bottom:0}
+.message-panel{min-height:0}
+.message-panel-heading{display:flex;align-items:center;gap:14px;padding:14px}
+.message-panel-heading h2{font-size:16px}
+.message-back-button{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:9px 11px;border:0;border-radius:8px;background:#eaf6f3;color:#087e70;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.message-list{flex:1;min-height:0;max-height:none;padding:14px}
+.message-compose{padding:10px;gap:8px}
+.message-compose button{padding:0 14px}
+.my-products-grid{grid-template-columns:1fr}
+.product-form-grid{grid-template-columns:1fr}
+.order-image{width:80px;height:80px}
+.workspace-header{padding:14px 16px}
+}
 .presence-status {
   display: flex;
   align-items: center;

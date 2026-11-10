@@ -34,6 +34,7 @@ export default function Messages() {
 
   const [conversations, setConversations] = useState([])
   const [selected, setSelected] = useState(null)
+  const [mobileChatOpen, setMobileChatOpen] = useState(false)
   const [messages, setMessages] = useState([])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
@@ -195,6 +196,7 @@ socket.on('userOffline', ({ userId }) => {
 
     selectedRef.current = conversation
     setSelected(conversation)
+    setMobileChatOpen(true)
     setMessages([])
     setError('')
 
@@ -300,7 +302,7 @@ socket.on('userOffline', ({ userId }) => {
 
         {error && <p className="workspace-error" role="alert">{error}</p>}
 
-        <div className="messages-layout">
+        <div className={`messages-layout ${mobileChatOpen ? 'mobile-chat-open' : ''}`}>
           <aside className="conversation-list">
             <h2>Conversations</h2>
 
@@ -354,6 +356,14 @@ socket.on('userOffline', ({ userId }) => {
             ) : (
               <>
                 <div className="message-panel-heading">
+  <button
+    type="button"
+    className="message-back-button"
+    onClick={() => setMobileChatOpen(false)}
+    aria-label="Back to conversations"
+  >
+    ← Back
+  </button>
   <div>
     <h2>{getName(otherParticipant(selected, currentUserId))}</h2>
     {typingUserId === getId(otherParticipant(selected, currentUserId)) && (
