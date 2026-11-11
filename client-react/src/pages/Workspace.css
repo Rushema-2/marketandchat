@@ -184,3 +184,52 @@
 .buyer-direct-payment-status{
   background:#fff;
 }
+
+/* Existing product media controls */
+.existing-product-media,
+.existing-product-video {
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid #e2e9eb;
+  border-radius: 10px;
+  background: #f9fbfb;
+}
+
+.existing-product-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.existing-product-image {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 112px;
+}
+
+.existing-product-image img {
+  width: 112px;
+  height: 90px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #edf1f2;
+}
+
+.existing-product-image button,
+.existing-product-video button {
+  padding: 7px 10px;
+  border: 1px solid #dbe4e7;
+  border-radius: 7px;
+  background: #fff;
+  color: #34434c;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.existing-product-video p {
+  margin: 8px 0;
+}

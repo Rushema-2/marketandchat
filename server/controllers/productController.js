@@ -430,8 +430,6 @@ const updateProduct = async (req, res) => {
             "price",
             "currency",
             "category",
-            "images",
-            "video",
             "location",
             "condition",
             "stock",
@@ -444,22 +442,61 @@ const updateProduct = async (req, res) => {
             }
         });
 
+        const existingImages = Array.isArray(product.images)
+            ? [...product.images]
+            : [];
+
+        if (req.body.retainedImages !== undefined) {
+            let retainedImages;
+
+            try {
+                retainedImages = typeof req.body.retainedImages === "string"
+                    ? JSON.parse(req.body.retainedImages)
+                    : req.body.retainedImages;
+            } catch {
+                return res.status(400).json({
+                    message: "Invalid retained images data"
+                });
+            }
+
+            if (!Array.isArray(retainedImages)) {
+                return res.status(400).json({
+                    message: "Retained images must be a list"
+                });
+            }
+
+            // Only allow image URLs that already belong to this product.
+            product.images = existingImages.filter((image) =>
+                retainedImages.includes(image)
+            );
+        } else {
+            product.images = existingImages;
+        }
+
         const uploadedImages = (req.files?.images || []).map(
-    (file) => file.path
-);
+            (file) => file.path
+        );
 
-if (uploadedImages.length > 0) {
-    product.images = [
-        ...(Array.isArray(product.images) ? product.images : []),
-        ...uploadedImages
-    ];
-}
+        if (product.images.length + uploadedImages.length > 6) {
+            return res.status(400).json({
+                message: "A product can have up to 6 images"
+            });
+        }
 
-const uploadedVideo = req.files?.video?.[0];
+        product.images = [
+            ...product.images,
+            ...uploadedImages
+        ];
 
-if (uploadedVideo) {
-    product.video = uploadedVideo.path;
-}
+        if (req.body.removeVideo === "true") {
+            product.video = null;
+        }
+
+        const uploadedVideo = req.files?.video?.[0];
+
+        if (uploadedVideo) {
+            product.video = uploadedVideo.path;
+        }
 
         await product.save();
 

@@ -19,11 +19,21 @@ function formatPrice(value, currency = 'RWF') {
   return `${new Intl.NumberFormat('en-RW', { maximumFractionDigits: 0 }).format(Number(value) || 0)} ${currency || 'RWF'}`
 }
 
+function mediaUrl(value) {
+  if (!value) return ''
+  if (/^https?:\/\//i.test(value)) return value
+  const origin = import.meta.env.VITE_API_ORIGIN || 'http://localhost:3000'
+  return `${origin}${value.startsWith('/') ? '' : '/'}${value}`
+}
+
 export default function MyProducts() {
   const [products, setProducts] = useState([])
   const [form, setForm] = useState(emptyForm)
-  const [selectedImages, setSelectedImages] = useState([]);
-const [selectedVideo, setSelectedVideo] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([])
+  const [selectedVideo, setSelectedVideo] = useState(null)
+  const [retainedImages, setRetainedImages] = useState([])
+  const [existingVideo, setExistingVideo] = useState('')
+  const [removeExistingVideo, setRemoveExistingVideo] = useState(false)
   const [editingId, setEditingId] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -77,6 +87,11 @@ const [selectedVideo, setSelectedVideo] = useState(null);
 
   function startNewProduct() {
     setEditingId('')
+    setSelectedImages([])
+    setSelectedVideo(null)
+    setRetainedImages([])
+    setExistingVideo('')
+    setRemoveExistingVideo(false)
     setForm(emptyForm)
     setNotice('')
     setError('')
@@ -85,6 +100,11 @@ const [selectedVideo, setSelectedVideo] = useState(null);
 
   function startEdit(product) {
     setEditingId(product._id)
+    setSelectedImages([])
+    setSelectedVideo(null)
+    setRetainedImages(Array.isArray(product.images) ? product.images : [])
+    setExistingVideo(product.video || '')
+    setRemoveExistingVideo(false)
     setForm({
       title: product.title || '',
       description: product.description || '',
@@ -107,8 +127,8 @@ const [selectedVideo, setSelectedVideo] = useState(null);
     setError('')
     setNotice('')
 
-    if (selectedImages.length > 6) {
-      setError('Select up to 6 images.')
+    if (retainedImages.length + selectedImages.length > 6) {
+      setError('A product can have up to 6 images in total. Remove an existing image or select fewer new images.')
       setSaving(false)
       return
     }
@@ -122,6 +142,11 @@ const [selectedVideo, setSelectedVideo] = useState(null);
     selectedImages.forEach((file) => {
       payload.append('images', file)
     })
+
+    if (editingId) {
+      payload.append('retainedImages', JSON.stringify(retainedImages))
+      payload.append('removeVideo', removeExistingVideo ? 'true' : 'false')
+    }
 
     if (selectedVideo) {
       payload.append('video', selectedVideo)
@@ -144,6 +169,9 @@ const [selectedVideo, setSelectedVideo] = useState(null);
       setForm(emptyForm)
       setSelectedImages([])
       setSelectedVideo(null)
+      setRetainedImages([])
+      setExistingVideo('')
+      setRemoveExistingVideo(false)
 
       await loadProducts()
     } catch (err) {
@@ -195,7 +223,22 @@ const [selectedVideo, setSelectedVideo] = useState(null);
           <form className="product-form" onSubmit={saveProduct}>
             <div className="product-form-heading">
               <h2>{editingId ? 'Edit product' : 'Add a product'}</h2>
-              <button type="button" className="workspace-secondary" onClick={() => { setShowForm(false); setError('') }}>Cancel</button>
+              <button
+                type="button"
+                className="workspace-secondary"
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingId('')
+                  setSelectedImages([])
+                  setSelectedVideo(null)
+                  setRetainedImages([])
+                  setExistingVideo('')
+                  setRemoveExistingVideo(false)
+                  setError('')
+                }}
+              >
+                Cancel
+              </button>
             </div>
             <label>Product title<input name="title" value={form.title} onChange={changeField} maxLength={150} required /></label>
             <label>Description<textarea name="description" value={form.description} onChange={changeField} rows={4} required /></label>
@@ -207,6 +250,45 @@ const [selectedVideo, setSelectedVideo] = useState(null);
               <label>Stock<input name="stock" type="number" min="0" step="1" value={form.stock} onChange={changeField} required /></label>
             </div>
           <div className="product-media-fields">
+  {editingId && retainedImages.length > 0 && (
+    <div className="existing-product-media">
+      <strong>Current product images</strong>
+      <div className="existing-product-images">
+        {retainedImages.map((image, index) => (
+          <div className="existing-product-image" key={`${image}-${index}`}>
+            <img src={mediaUrl(image)} alt={`Product image ${index + 1}`} />
+            <button
+              type="button"
+              className="workspace-secondary"
+              onClick={() => setRetainedImages((previous) => previous.filter((_, itemIndex) => itemIndex !== index))}
+              aria-label={`Remove image ${index + 1}`}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {editingId && existingVideo && (
+    <div className="existing-product-video">
+      <strong>Current product video</strong>
+      {removeExistingVideo ? (
+        <p className="workspace-muted">The current video will be removed when you save.</p>
+      ) : (
+        <p><a href={mediaUrl(existingVideo)} target="_blank" rel="noreferrer">View current video</a></p>
+      )}
+      <button
+        type="button"
+        className="workspace-secondary"
+        onClick={() => setRemoveExistingVideo((previous) => !previous)}
+      >
+        {removeExistingVideo ? 'Keep current video' : 'Remove current video'}
+      </button>
+    </div>
+  )}
+
   <label>
     Product Images (up to 6)
     <input
@@ -215,10 +297,10 @@ const [selectedVideo, setSelectedVideo] = useState(null);
       multiple
       onChange={(event) => {
         const files = Array.from(event.target.files || []);
+        event.target.value = '';
 
-        if (files.length > 6) {
-          setError('Select up to 6 images.');
-          event.target.value = '';
+        if (retainedImages.length + files.length > 6) {
+          setError('A product can have up to 6 images in total. Remove an existing image or select fewer new images.');
           setSelectedImages([]);
           return;
         }
@@ -241,9 +323,9 @@ const [selectedVideo, setSelectedVideo] = useState(null);
     />
   </label>
 
-  {selectedImages.length > 0 && (
+  {(selectedImages.length > 0 || (editingId && retainedImages.length > 0)) && (
     <p className="workspace-muted">
-      Selected images: {selectedImages.length}
+      Images on this product after saving: {retainedImages.length + selectedImages.length} / 6
     </p>
   )}
 
