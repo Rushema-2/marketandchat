@@ -1,0 +1,29 @@
+.verified-seller-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  padding: 4px 9px;
+  border: 1px solid #b8e5d2;
+  border-radius: 999px;
+  background: #eaf8f1;
+  color: #08764f;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.verified-seller-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #08764f;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+}

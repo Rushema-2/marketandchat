@@ -136,7 +136,7 @@ const filter = {
             await Product.find(filter)
                 .populate(
                     "seller",
-                    "firstName lastName email phone"
+                    "firstName lastName email phone isVerifiedSeller"
                 )
                 .sort({
                     isPromoted: -1,
@@ -226,7 +226,7 @@ const getProduct = async (req, res) => {
                 }
             }).populate(
                 "seller",
-                "firstName lastName email phone"
+                "firstName lastName email phone isVerifiedSeller"
             );
 
         if (!product) {
@@ -327,7 +327,7 @@ const getSellerProducts = async (req, res) => {
             await User.findById(
                 req.params.sellerId
             ).select(
-                "firstName lastName email phone"
+                "firstName lastName email phone isVerifiedSeller"
             );
 
         if (!seller) {

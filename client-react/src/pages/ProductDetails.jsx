@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../api'
+import VerifiedSellerBadge from '../components/VerifiedSellerBadge'
 import './ProductDetails.css'
 
 function formatPrice(price) {
@@ -509,7 +510,10 @@ const videoUrl = videoPath
 
           <div className="details-divider" />
           <h2>Seller information</h2>
-          <p className="details-seller">{sellerName}</p>
+          <p className="details-seller">
+            {sellerName}
+            <VerifiedSellerBadge verified={product.seller?.isVerifiedSeller === true} />
+          </p>
           {sellerId && (
             <a className="details-store-link" href={`/store/${sellerId}`}>
               View seller store →

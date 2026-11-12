@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '../api'
+import VerifiedSellerBadge from '../components/VerifiedSellerBadge'
 import './SellerStore.css'
 
 const API_ORIGIN = (
@@ -281,7 +282,10 @@ function SellerStore() {
 
             <div className="seller-store-profile-info">
               <p className="seller-store-eyebrow">SELLER STORE</p>
-              <h1>{sellerName}</h1>
+              <h1>
+                {sellerName}
+                <VerifiedSellerBadge verified={seller?.isVerifiedSeller === true} />
+              </h1>
               <p>
                 {products.length} active product{products.length === 1 ? '' : 's'}
               </p>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api'
 import NotificationBell from '../components/NotificationBell'
+import VerifiedSellerBadge from '../components/VerifiedSellerBadge'
 import './Marketplace.css'
 
 const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || 'https://marketandchat.onrender.com').replace(/\/$/, '')
@@ -338,6 +339,9 @@ function Marketplace() {
                         Seller: {product.seller
                           ? `${product.seller.firstName || ''} ${product.seller.lastName || ''}`.trim()
                           : 'Seller'}
+                        <VerifiedSellerBadge
+                          verified={product.seller?.isVerifiedSeller === true}
+                        />
                       </p>
                       {(product.seller?._id || product.seller?.id) && (
                         <a
