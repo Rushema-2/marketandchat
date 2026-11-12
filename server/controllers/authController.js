@@ -11,7 +11,8 @@ const registerUser = async (req, res) => {
             lastName,
             email,
             phone,
-            password
+            password,
+            referralCode
         } = req.body;
 
         if (!firstName || !lastName || !email || !phone || !password) {
@@ -36,6 +37,19 @@ const registerUser = async (req, res) => {
             });
         }
 
+        let inviter = null;
+        const cleanReferralCode = String(referralCode || "").trim().toUpperCase();
+
+        if (cleanReferralCode) {
+            inviter = await User.findOne({ referralCode: cleanReferralCode });
+
+            if (!inviter) {
+                return res.status(400).json({
+                    message: "The referral code is invalid."
+                });
+            }
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const user = await User.create({
@@ -43,7 +57,8 @@ const registerUser = async (req, res) => {
             lastName,
             email,
             phone,
-            password: hashedPassword
+            password: hashedPassword,
+            ...(inviter ? { referredBy: inviter._id } : {})
         });
 
         res.status(201).json({
@@ -131,7 +146,7 @@ const loginUser = async (req, res) => {
 
 const googleLogin = async (req, res) => {
     try {
-        const { credential, phone } = req.body || {};
+        const { credential, phone, referralCode } = req.body || {};
 
         if (!credential) {
             return res.status(400).json({
@@ -183,6 +198,19 @@ const googleLogin = async (req, res) => {
                 });
             }
 
+            let inviter = null;
+            const cleanReferralCode = String(referralCode || "").trim().toUpperCase();
+
+            if (cleanReferralCode) {
+                inviter = await User.findOne({ referralCode: cleanReferralCode });
+
+                if (!inviter) {
+                    return res.status(400).json({
+                        message: "The referral code is invalid."
+                    });
+                }
+            }
+
             const randomPassword = require("crypto").randomBytes(32).toString("hex");
             const hashedPassword = await bcrypt.hash(randomPassword, 10);
             const displayName = String(payload.name || "").trim().split(/\s+/);
@@ -198,7 +226,8 @@ const googleLogin = async (req, res) => {
                 lastName,
                 email,
                 phone: cleanPhone,
-                password: hashedPassword
+                password: hashedPassword,
+                ...(inviter ? { referredBy: inviter._id } : {})
             });
         }
 

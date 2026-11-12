@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 
 const userSchema = new mongoose.Schema(
     {
@@ -64,6 +65,23 @@ resetPasswordExpires: {
 lastSeen: {
     type: Date,
     default: null
+},
+
+
+
+referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    uppercase: true,
+    trim: true
+},
+
+referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+    index: true
 }
 
     },
@@ -71,6 +89,13 @@ lastSeen: {
         timestamps: true
     }
 );
+
+
+userSchema.pre("validate", function () {
+    if (!this.referralCode) {
+        this.referralCode = crypto.randomBytes(5).toString("hex").toUpperCase();
+    }
+});
 
 const User = mongoose.model("User", userSchema);
 

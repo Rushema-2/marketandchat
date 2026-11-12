@@ -15,19 +15,25 @@ import Messages from './pages/Messages'
 import MyOrders from './pages/MyOrders'
 import MyProducts from './pages/MyProducts'
 import Notifications from './pages/Notifications'
+import Referrals from './pages/Referrals'
 import SellerDashboard from './pages/SellerDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import NRChatWidget from './components/NRChatWidget'
 import './App.css'
 
 function LoginPage() {
-  const [page, setPage] = useState('login')
+  const [page, setPage] = useState(() =>
+    new URLSearchParams(window.location.search).get('ref') ? 'register' : 'login'
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [googlePhone, setGooglePhone] = useState('')
+  const [googleReferralCode, setGoogleReferralCode] = useState(() =>
+    new URLSearchParams(window.location.search).get('ref') || ''
+  )
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState('')
 
   async function handleLogin(event) {
@@ -126,6 +132,7 @@ function LoginPage() {
       const data = await googleLoginUser({
         credential: pendingGoogleCredential,
         phone: googlePhone.trim(),
+        referralCode: googleReferralCode.trim().toUpperCase(),
       })
 
       if (data.phoneRequired) {
@@ -134,6 +141,7 @@ function LoginPage() {
       }
 
       setPendingGoogleCredential('')
+      setGoogleReferralCode('')
       await finishGoogleLogin(data)
     } catch (err) {
       setError(
@@ -223,6 +231,17 @@ function LoginPage() {
               onChange={(event) => setGooglePhone(event.target.value)}
               required
             />
+            <label htmlFor="google-referral-code">
+              Referral code (optional)
+            </label>
+            <input
+              id="google-referral-code"
+              type="text"
+              autoComplete="off"
+              placeholder="Enter a friend's referral code"
+              value={googleReferralCode}
+              onChange={(event) => setGoogleReferralCode(event.target.value)}
+            />
             <button type="submit" disabled={googleLoading}>
               {googleLoading ? 'Please wait...' : 'Continue'}
             </button>
@@ -232,6 +251,7 @@ function LoginPage() {
               onClick={() => {
                 setPendingGoogleCredential('')
                 setGooglePhone('')
+                setGoogleReferralCode('')
                 setError('')
               }}
             >
@@ -287,6 +307,7 @@ function App() {
           <Route path="/store/:sellerId" element={<SellerStore />} />
         <Route path="/messages" element={<Messages />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/referrals" element={<Referrals />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/my-products" element={<MyProducts />} />
         <Route path="/seller-dashboard" element={<SellerDashboard />} />

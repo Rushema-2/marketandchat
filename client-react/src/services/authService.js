@@ -15,6 +15,7 @@ export const registerUser = async ({
   email,
   phone,
   password,
+  referralCode,
 }) => {
   const response = await api.post('/auth/register', {
     firstName,
@@ -22,6 +23,7 @@ export const registerUser = async ({
     email,
     phone,
     password,
+    ...(referralCode ? { referralCode } : {}),
   })
 
   return response.data
@@ -32,10 +34,11 @@ export const getCurrentUser = async () => {
   return response.data
 }
 
-export const googleLoginUser = async ({ credential, phone }) => {
+export const googleLoginUser = async ({ credential, phone, referralCode }) => {
   const response = await api.post('/auth/google', {
     credential,
     ...(phone ? { phone } : {}),
+    ...(referralCode ? { referralCode } : {}),
   })
 
   return response.data

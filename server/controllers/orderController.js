@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const User = require("../models/User");
 const { requestToPay } = require("../services/momoService");
+const { awardReferralRewardForDeliveredOrder } = require("../services/referralService");
 const {
     getPaymentStatus
 } = require("../services/momoPaymentStatusService");
@@ -1051,6 +1052,13 @@ const confirmOrderDelivered = async (req, res) => {
 
         order.status = "delivered";
         await order.save();
+
+        try {
+            await awardReferralRewardForDeliveredOrder(order);
+        } catch (rewardError) {
+            // Delivery confirmation must still succeed if reward recording needs attention.
+            console.error("Referral reward processing error:", rewardError);
+        }
 
         return res.status(200).json({
             message: "Delivery confirmed successfully",

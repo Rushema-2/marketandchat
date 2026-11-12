@@ -9,6 +9,7 @@ export default function Register({ onLogin }) {
     phone: '',
     password: '',
     confirmPassword: '',
+    referralCode: new URLSearchParams(window.location.search).get('ref') || '',
   })
 
   const [error, setError] = useState('')
@@ -43,6 +44,7 @@ export default function Register({ onLogin }) {
         email: form.email.trim(),
         phone: form.phone.trim(),
         password: form.password,
+        referralCode: form.referralCode.trim().toUpperCase(),
       })
 
       setMessage('Account created successfully! You can now sign in.')
@@ -53,6 +55,7 @@ export default function Register({ onLogin }) {
         phone: '',
         password: '',
         confirmPassword: '',
+        referralCode: '',
       })
     } catch (err) {
       setError(
@@ -96,6 +99,16 @@ export default function Register({ onLogin }) {
           <label htmlFor="phone">Phone number</label>
           <input id="phone" name="phone" type="tel" autoComplete="tel"
             value={form.phone} onChange={handleChange} required />
+
+          <label htmlFor="referralCode">Referral code (optional)</label>
+          <input
+            id="referralCode"
+            name="referralCode"
+            autoComplete="off"
+            placeholder="Enter a friend's referral code"
+            value={form.referralCode}
+            onChange={handleChange}
+          />
 
           <label htmlFor="password">Password</label>
           <input id="password" name="password" type="password"
