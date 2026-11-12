@@ -168,6 +168,7 @@ function Marketplace() {
           <a href="/favorites">❤️ Favorites</a>
           <NotificationBell />
           <a href="/my-orders">My orders</a>
+          <a href="/referrals">Referrals &amp; Rewards</a>
           <a href="/my-products">My products</a>
           <a href="/seller-dashboard">Seller Dashboard</a>
         </nav>
