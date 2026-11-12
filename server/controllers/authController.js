@@ -4,6 +4,33 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+const cleanMarketingAttribution = (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return {};
+    }
+
+    const fields = {
+        source: "acquisitionSource",
+        medium: "acquisitionMedium",
+        campaign: "acquisitionCampaign",
+        content: "acquisitionContent",
+        term: "acquisitionTerm"
+    };
+
+    const attribution = {};
+
+    for (const [inputKey, modelKey] of Object.entries(fields)) {
+        const cleanValue = String(value[inputKey] || "").trim().slice(0, 100);
+        if (cleanValue) attribution[modelKey] = cleanValue;
+    }
+
+    if (Object.keys(attribution).length) {
+        attribution.acquisitionCapturedAt = new Date();
+    }
+
+    return attribution;
+};
+
 const registerUser = async (req, res) => {
     try {
         const {
@@ -12,7 +39,8 @@ const registerUser = async (req, res) => {
             email,
             phone,
             password,
-            referralCode
+            referralCode,
+            marketingAttribution
         } = req.body;
 
         if (!firstName || !lastName || !email || !phone || !password) {
@@ -58,7 +86,8 @@ const registerUser = async (req, res) => {
             email,
             phone,
             password: hashedPassword,
-            ...(inviter ? { referredBy: inviter._id } : {})
+            ...(inviter ? { referredBy: inviter._id } : {}),
+            ...cleanMarketingAttribution(marketingAttribution)
         });
 
         res.status(201).json({
@@ -146,7 +175,12 @@ const loginUser = async (req, res) => {
 
 const googleLogin = async (req, res) => {
     try {
-        const { credential, phone, referralCode } = req.body || {};
+        const {
+            credential,
+            phone,
+            referralCode,
+            marketingAttribution
+        } = req.body || {};
 
         if (!credential) {
             return res.status(400).json({
@@ -227,7 +261,8 @@ const googleLogin = async (req, res) => {
                 email,
                 phone: cleanPhone,
                 password: hashedPassword,
-                ...(inviter ? { referredBy: inviter._id } : {})
+                ...(inviter ? { referredBy: inviter._id } : {}),
+                ...cleanMarketingAttribution(marketingAttribution)
             });
         }
 

@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 
-const Notification = require("../models/Notification");
+const {
+    createAndSendNotification
+} = require("../services/notificationService");
 const Product =
     require("../models/Product");
 
@@ -65,7 +67,7 @@ const likeProduct = async (req, res) => {
             String(product.seller) !==
             String(userId)
         ) {
-            await Notification.create({
+            await createAndSendNotification({
                 recipient: product.seller,
                 sender: userId,
                 type: "product_like",

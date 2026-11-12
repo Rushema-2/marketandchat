@@ -67,7 +67,21 @@ lastSeen: {
     default: null
 },
 
+isVerifiedSeller: {
+    type: Boolean,
+    default: false
+},
 
+sellerVerifiedAt: {
+    type: Date,
+    default: null
+},
+
+sellerVerifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null
+},
 
 referralCode: {
     type: String,
@@ -82,7 +96,14 @@ referredBy: {
     ref: "User",
     default: null,
     index: true
-}
+},
+
+acquisitionSource: { type: String, default: null, maxlength: 100 },
+acquisitionMedium: { type: String, default: null, maxlength: 100 },
+acquisitionCampaign: { type: String, default: null, maxlength: 100 },
+acquisitionContent: { type: String, default: null, maxlength: 100 },
+acquisitionTerm: { type: String, default: null, maxlength: 100 },
+acquisitionCapturedAt: { type: Date, default: null }
 
     },
     {

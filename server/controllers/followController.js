@@ -3,8 +3,9 @@ const mongoose = require("mongoose");
 const Follow =
     require("../models/Follow");
 
-    const Notification =
-    require("../models/Notification");
+const {
+    createAndSendNotification
+} = require("../services/notificationService");
 
 const User =
     require("../models/User");
@@ -75,13 +76,13 @@ const followUser = async (req, res) => {
             following: followingId
         });
 
-        await Notification.create({
-    recipient: followingId,
-    sender: followerId,
-    type: "follow",
-    message: "Someone started following you",
-    relatedId: followerId
-});
+        await createAndSendNotification({
+            recipient: followingId,
+            sender: followerId,
+            type: "follow",
+            message: "Someone started following you",
+            relatedId: followerId
+        });
 
         const followersCount =
             await Follow.countDocuments({

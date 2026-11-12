@@ -1,5 +1,6 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { captureMarketingAttribution } from './services/marketingAttribution'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { loginUser, googleLoginUser } from './services/authService'
 import { GoogleLogin } from '@react-oauth/google'
@@ -293,6 +294,10 @@ function LoginPage() {
 }
 
 function App() {
+  useEffect(() => {
+    captureMarketingAttribution()
+  }, [])
+
   return (
     <BrowserRouter>
       <Routes>

@@ -4,7 +4,10 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 
 const {
     getOverview,
+    getAnalytics,
+    getPerformance,
     getUsers,
+    updateSellerVerification,
     getProducts,
     getOrders,
     getReviews,
@@ -22,7 +25,10 @@ const router = express.Router();
 router.use(authMiddleware, adminMiddleware);
 
 router.get("/overview", getOverview);
+router.get("/analytics", getAnalytics);
+router.get("/performance", getPerformance);
 router.get("/users", getUsers);
+router.patch("/users/:id/verification", updateSellerVerification);
 router.get("/products", getProducts);
 router.get("/orders", getOrders);
 router.get("/reviews", getReviews);

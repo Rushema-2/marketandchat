@@ -57,6 +57,9 @@ function NRChatWidget() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(localStorage.getItem('token')
+            ? { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            : {}),
         },
         body: JSON.stringify({
           message: cleanMessage,

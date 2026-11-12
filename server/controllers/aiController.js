@@ -1,5 +1,6 @@
 const Product = require("../models/Product");
 const Service = require("../models/Service");
+const Order = require("../models/Order");
 
 const requestLimits = new Map();
 
@@ -286,6 +287,260 @@ function getAppFeatureReply(message) {
     return null;
 }
 
+
+
+
+
+function getPaymentHelpReply(message) {
+    const text = message.toLowerCase();
+
+    // Refund questions: do not promise an unsupported refund feature.
+    if (/\b(refund|money back|return my money)\b/.test(text)) {
+        return [
+            "I cannot confirm that NR Nexus currently provides an automated refund feature.",
+            "For a payment or refund concern, contact the seller through the product's Contact Seller option or Messages.",
+            "Keep your transaction information safe and never share your wallet PIN or password."
+        ].join("\n");
+    }
+
+    // MTN MoMo sandbox is separate from direct seller payments.
+    if (/\b(sandbox|test payment|testing payment)\b/.test(text)) {
+        return [
+            "NR Nexus has a separate MTN MoMo sandbox payment option for testing.",
+            "A sandbox payment request being submitted does not mean that real money was received or that the order payment was completed.",
+            "Direct seller payments through MTN MoMo or Airtel Money follow a separate process."
+        ].join("\n");
+    }
+
+    // Seller payment settings.
+    if (
+        /\b(seller|my store|my shop|receive payments|payment settings)\b/.test(text) &&
+        /\b(set|add|configure|change|update|receive|setup|enable|number|details|payment)\b/.test(text)
+    ) {
+        return [
+            "Sellers can configure the mobile money numbers buyers use to pay them:",
+            "1. Open Seller Dashboard.",
+            "2. Find the payment settings section.",
+            "3. Add your MTN MoMo number, Airtel Money number, or both.",
+            "4. Save your payment settings.",
+            "",
+            "Only configure numbers that belong to you and that you can verify."
+        ].join("\n");
+    }
+
+    // Explain direct payment statuses.
+    if (
+        /\b(payment status|payment pending|submitted payment|confirming payment|confirmed payment|rejected payment|payment rejected|payment confirmed)\b/.test(text)
+    ) {
+        return [
+            "Here is what the direct payment statuses mean:",
+            "- Not started: no direct payment reference has been submitted.",
+            "- Submitted: the buyer has submitted a transaction reference. The seller still needs to verify receipt.",
+            "- Confirming: the seller's confirmation process is in progress.",
+            "- Confirmed: the seller confirmed receipt of the payment.",
+            "- Rejected: the seller rejected the submitted payment. Check the rejection reason in My Orders.",
+            "",
+            "A submitted reference alone does not prove that money was received."
+        ].join("\n");
+    }
+
+    // Seller confirmation and rejection.
+    if (
+        /\b(confirm|verify|reject|approve)\b/.test(text) &&
+        /\b(payment|momo|transaction|money)\b/.test(text)
+    ) {
+        return [
+            "For direct seller payments, the seller must review the submitted payment in Seller Dashboard.",
+            "The seller should confirm only after checking that the money has actually arrived in their wallet.",
+            "The seller can reject a submitted payment and provide a reason.",
+            "NR AI cannot confirm or reject payments for you."
+        ].join("\n");
+    }
+
+    // Buyer payment instructions.
+    if (
+        /\b(pay|payment|payments|momo|mobile money|mtn money|airtel money|transaction reference)\b/.test(text)
+    ) {
+        return [
+            "NR Nexus supports direct seller payments using MTN MoMo and Airtel Money when the seller has configured those payment methods.",
+            "To pay for a product:",
+            "1. Open the product and review its available seller payment methods, or open an eligible pending order in My Orders.",
+            "2. Choose a payment method configured by the seller.",
+            "3. Pay using your mobile money application.",
+            "4. Submit the transaction reference in NR Nexus.",
+            "5. Wait for the seller to verify receipt and confirm the payment.",
+            "",
+            "Submitting a reference does not automatically confirm payment. You can review the available payment status in My Orders."
+        ].join("\n");
+    }
+
+    return null;
+}
+
+
+function classifyNRIntent(message) {
+    const text = message.toLowerCase();
+
+    if (
+        /\b(my orders|my purchase history|order status|track my order|show me my orders|view my orders)\b/.test(text)
+    ) {
+        return "orders";
+    }
+
+    if (
+        /\b(payment|payments|pay|paid|momo|mobile money|mtn money|airtel money|refund|transaction)\b/.test(text)
+    ) {
+        return "payments";
+    }
+
+    if (
+        /\b(contact|message|chat|talk to|speak to)\b/.test(text) &&
+        /\b(seller|vendor)\b/.test(text)
+    ) {
+        return "communication";
+    }
+
+    if (
+        /\b(nexus tv|videos?|watch a video|watch videos|upload a video)\b/.test(text)
+    ) {
+        return "nexus_tv";
+    }
+
+    if (
+        /\b(job|jobs|service|services|professional|professionals|service provider)\b/.test(text)
+    ) {
+        return "services";
+    }
+
+    if (
+        /\b(product|products|item|items|goods|buy|purchase|shopping|marketplace|price|prices|stock)\b/.test(text)
+    ) {
+        return "shopping";
+    }
+
+    if (
+        /\b(favorites?|favourites?|account|profile|login|log in|register|password|sign in|sign up)\b/.test(text)
+    ) {
+        return "account_help";
+    }
+
+    return "general";
+}
+
+
+async function routeNRCapability(message, userId, intent) {
+    switch (intent) {
+        case "orders": {
+            const reply = await getMyOrdersReply(message, userId);
+            return reply || getAppFeatureReply(message);
+        }
+
+        case "shopping":
+            return (
+                await getLocationMarketplaceReply(message)
+            ) || getProductDiscoveryReply(message);
+
+        case "services":
+            return (
+                await getLocationMarketplaceReply(message)
+            ) || getAppFeatureReply(message);
+
+        case "communication":
+        case "account_help":
+        case "nexus_tv":
+            return getAppFeatureReply(message);
+
+        case "payments":
+            return getPaymentHelpReply(message);
+
+        case "general":
+        default:
+            return null;
+    }
+}
+
+async function getMyOrdersReply(message, userId) {
+    const text = message.toLowerCase();
+
+    // Keep ordinary navigation questions on the existing help path.
+    const asksWhereToView =
+        /\b(where|how)\b.*\b(view|find|open|access)\b.*\bmy orders?\b/i.test(text);
+
+    if (asksWhereToView) return null;
+
+    const mentionsOwnOrders =
+        /\bmy orders?\b|\bmy purchase history\b|\bmy order status\b|\btrack my order\b/i.test(text);
+
+    if (!mentionsOwnOrders) return null;
+
+    if (!userId) {
+        return [
+            "Please sign in to your NR Nexus account first.",
+            "After signing in, ask me again and I can show you a summary of your own recent orders.",
+            "You can also open My Orders to view your purchases."
+        ].join("\n");
+    }
+
+    const orders = await Order.find({
+        buyer: userId
+    })
+        .select(
+            "product quantity totalAmount currency paymentStatus directPaymentStatus status createdAt"
+        )
+        .populate("product", "title")
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean();
+
+    if (!orders.length) {
+        return "I could not find any orders linked to your account yet. You can browse the Marketplace to find products.";
+    }
+
+    const lines = [
+        "Here are your five most recent orders, or fewer if you have not placed five:",
+        ""
+    ];
+
+    orders.forEach((order, index) => {
+        const productName = order.product?.title || "Product details unavailable";
+        const orderDate = order.createdAt
+            ? new Date(order.createdAt).toLocaleDateString("en-GB")
+            : "Date unavailable";
+
+        let paymentLabel = "Payment status unavailable";
+
+        if (order.directPaymentStatus === "confirmed") {
+            paymentLabel = "Confirmed by seller (direct payment)";
+        } else if (order.paymentStatus === "successful") {
+            paymentLabel = "Paid";
+        } else if (order.directPaymentStatus === "submitted") {
+            paymentLabel = "Submitted for seller confirmation";
+        } else if (order.directPaymentStatus === "rejected") {
+            paymentLabel = "Direct payment rejected";
+        } else if (order.paymentStatus) {
+            paymentLabel = order.paymentStatus.replace(/_/g, " ");
+        }
+
+        const amount = Number(order.totalAmount || 0).toLocaleString("en-US");
+        const currency = order.currency || "RWF";
+        const orderStatus = (order.status || "unknown").replace(/_/g, " ");
+
+        lines.push(
+            `${index + 1}. ${productName}`,
+            `   Date: ${orderDate}`,
+            `   Order status: ${orderStatus}`,
+            `   Payment: ${paymentLabel}`,
+            `   Quantity: ${order.quantity}`,
+            `   Total: ${amount} ${currency}`,
+            ""
+        );
+    });
+
+    lines.push("For full order details, open My Orders in NR Nexus.");
+
+    return lines.join("\n");
+}
+
 exports.chatWithNR = async (req, res) => {
     try {
         const ip = req.ip || "unknown";
@@ -308,30 +563,18 @@ exports.chatWithNR = async (req, res) => {
             });
         }
 
-        const locationReply = await getLocationMarketplaceReply(message);
+        const intent = classifyNRIntent(message);
 
-        if (locationReply) {
+        const capabilityReply = await routeNRCapability(
+            message,
+            req.user?.userId,
+            intent
+        );
+
+        if (capabilityReply) {
             return res.json({
                 success: true,
-                reply: locationReply
-            });
-        }
-
-        const productDiscoveryReply = getProductDiscoveryReply(message);
-
-        if (productDiscoveryReply) {
-            return res.json({
-                success: true,
-                reply: productDiscoveryReply
-            });
-        }
-
-        const appFeatureReply = getAppFeatureReply(message);
-
-        if (appFeatureReply) {
-            return res.json({
-                success: true,
-                reply: appFeatureReply
+                reply: capabilityReply
             });
         }
 
@@ -396,7 +639,8 @@ ORDERS AND PAYMENTS:
 - Do not claim that live order tracking, delivery tracking or tracking information is available.
 - Do not claim that an order has been placed, confirmed, paid, shipped or delivered unless the system explicitly provides that status.
 - Do not claim that a payment succeeded without confirmation.
-- If a customer asks about an order-specific status, explain that you cannot access or verify their private order status in this chat and direct them to the appropriate app page or support channel.
+- For a signed-in customer, use authenticated order capability results when they are provided to answer questions about that customer's own recent orders and statuses. Never reveal another user's orders.
+- If authenticated order information is not provided, direct the customer to My Orders. Never claim live delivery tracking is available.
 
 APP FEATURES:
 - You may explain Marketplace browsing, contacting sellers through Messages, Favorites, Seller Stores, My Orders and My Products.

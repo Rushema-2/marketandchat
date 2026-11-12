@@ -30,7 +30,13 @@ const aiRoutes = require("./routes/aiRoutes");
 const path = require("path");
 const Message = require("./models/Message");
 const Conversation = require("./models/Conversation");
-const Notification = require("./models/Notification");
+const {
+    configureNotificationDelivery,
+    createAndSendNotification
+} = require("./services/notificationService");
+const {
+    performanceMonitoringMiddleware
+} = require("./services/performanceMonitoringService");
 
 dotenv.config({
     path: path.join(__dirname, ".env"),
@@ -47,9 +53,12 @@ const io = new Server(server, {
     }
 });
 
+configureNotificationDelivery(io, onlineUsers);
+
 
 app.use(cors());
 app.use(express.json());
+app.use(performanceMonitoringMiddleware);
 
 app.use(
     express.static(
@@ -397,30 +406,13 @@ socket.on("stopTyping", ({ conversationId } = {}) => {
                     );
 
                     for (const recipientId of recipients) {
-                        const notification = await Notification.create({
+                        await createAndSendNotification({
                             recipient: recipientId,
                             sender: senderId,
                             type: "message",
                             message: `New message from ${senderName}`,
                             relatedId: conversation._id
                         });
-
-                        const populatedNotification = await Notification
-                            .findById(notification._id)
-                            .populate("sender", "firstName lastName email");
-
-                        const recipientSockets = onlineUsers.get(
-                            String(recipientId)
-                        );
-
-                        if (recipientSockets) {
-                            for (const recipientSocketId of recipientSockets) {
-                                io.to(recipientSocketId).emit(
-                                    "newNotification",
-                                    populatedNotification
-                                );
-                            }
-                        }
                     }
                 } catch (notificationError) {
                     console.error(

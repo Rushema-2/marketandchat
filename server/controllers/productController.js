@@ -1,6 +1,8 @@
 const Product = require("../models/Product");
 const User = require("../models/User");
-const Notification = require("../models/Notification");
+const {
+    createAndSendNotification
+} = require("../services/notificationService");
 const Review = require("../models/Review");
 
 // ========================================
@@ -253,7 +255,7 @@ const getProduct = async (req, res) => {
             String(viewerId)
         ) {
             try {
-                await Notification.create({
+                await createAndSendNotification({
                     recipient: product.seller._id,
                     sender: viewerId,
                     type: "product_view",

@@ -1,4 +1,5 @@
 import api from '../api'
+import { getMarketingAttribution } from './marketingAttribution'
 
 export const loginUser = async ({ email, password }) => {
   const response = await api.post('/auth/login', {
@@ -24,6 +25,7 @@ export const registerUser = async ({
     phone,
     password,
     ...(referralCode ? { referralCode } : {}),
+    marketingAttribution: getMarketingAttribution(),
   })
 
   return response.data
@@ -39,6 +41,7 @@ export const googleLoginUser = async ({ credential, phone, referralCode }) => {
     credential,
     ...(phone ? { phone } : {}),
     ...(referralCode ? { referralCode } : {}),
+    marketingAttribution: getMarketingAttribution(),
   })
 
   return response.data
