@@ -1,6 +1,10 @@
 const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
 const { videoUpload } = require("../middleware/uploadMiddleware");
+const {
+    createVideoUploadSignature,
+    finalizeVideoUpload
+} = require("../controllers/videoUploadController");
 
 const {
     getVideos,
@@ -19,6 +23,10 @@ router.get("/", getVideos);
 
 // Owner's videos - must come before /:id
 router.get("/mine", authMiddleware, getMyVideos);
+
+// Signed, chunked Cloudinary uploads
+router.post("/upload/sign", authMiddleware, createVideoUploadSignature);
+router.post("/upload/finalize", authMiddleware, finalizeVideoUpload);
 
 // Download permission is checked by the controller
 router.get("/:id/download", downloadVideo);

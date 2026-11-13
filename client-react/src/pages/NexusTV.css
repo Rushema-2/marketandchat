@@ -338,3 +338,63 @@
     padding: 17px;
   }
 }
+
+/* Large video upload progress */
+.tv-selected-file {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #edf7f4;
+  color: #176b55;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.tv-upload-progress {
+  display: grid;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid #dcebe6;
+  border-radius: 9px;
+  background: #f7fbf9;
+}
+
+.tv-upload-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #40515a;
+  font-size: 13px;
+}
+
+.tv-upload-progress-heading strong {
+  color: #087e70;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-upload-progress progress {
+  display: block;
+  width: 100%;
+  height: 12px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: #dce8e4;
+  accent-color: #087e70;
+}
+
+.tv-upload-progress progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: #dce8e4;
+}
+
+.tv-upload-progress progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: #087e70;
+}
+
+.tv-upload-progress progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: #087e70;
+}

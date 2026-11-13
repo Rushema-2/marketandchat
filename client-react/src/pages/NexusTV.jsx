@@ -15,6 +15,58 @@ const categories = [
   { value: 'other', label: 'Other' },
 ]
 
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes < 0) return '0 B'
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
+
+function uploadCloudinaryChunk({ url, formData, start, end, total, uploadId, onProgress }) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+
+    xhr.open('POST', url)
+    xhr.setRequestHeader('X-Unique-Upload-Id', uploadId)
+    xhr.setRequestHeader('Content-Range', `bytes ${start}-${end - 1}/${total}`)
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        onProgress(event.loaded)
+      }
+    })
+
+    xhr.onload = () => {
+      let response
+
+      try {
+        response = JSON.parse(xhr.responseText)
+      } catch {
+        reject(new Error('Cloudinary returned an unreadable upload response.'))
+        return
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(
+          response.error?.message ||
+          `Cloudinary upload failed (HTTP ${xhr.status}).`
+        ))
+        return
+      }
+
+      resolve(response)
+    }
+
+    xhr.onerror = () => reject(new Error(
+      'Network error while uploading to Cloudinary. Check your connection and try again.'
+    ))
+
+    xhr.onabort = () => reject(new Error('The video upload was cancelled.'))
+
+    xhr.send(formData)
+  })
+}
+
 function NexusTV() {
   const [videos, setVideos] = useState([])
   const [category, setCategory] = useState('all')
@@ -24,6 +76,7 @@ function NexusTV() {
   const [myVideos, setMyVideos] = useState(false)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [title, setTitle] = useState('')
@@ -69,30 +122,111 @@ function NexusTV() {
     event.preventDefault()
     setError('')
     setMessage('')
+    setUploadProgress(0)
 
     if (!localStorage.getItem('token')) {
       setError('Please sign in before uploading a video.')
       return
     }
+
     if (!videoFile) {
       setError('Please select a video file.')
       return
     }
 
-    const formData = new FormData()
-    formData.append('video', videoFile)
-    formData.append('title', title)
-    formData.append('description', description)
-    formData.append('category', uploadCategory)
-    formData.append('allowDownload', String(allowDownload))
+    if (!title.trim()) {
+      setError('Please enter a video title.')
+      return
+    }
 
     setUploading(true)
+
     try {
-      await api.post('/videos', formData, {
-        timeout: 0,
-        headers: { 'Content-Type': 'multipart/form-data' },
+      // Request a short-lived signature for this user's Cloudinary folder.
+      const signatureResponse = await api.post('/videos/upload/sign')
+      const upload = signatureResponse.data.upload
+
+      if (!upload?.cloudName || !upload?.apiKey || !upload?.signature) {
+        throw new Error('The server returned incomplete upload credentials.')
+      }
+
+      if (videoFile.size <= 0 || videoFile.size > upload.maxVideoBytes) {
+        throw new Error(
+          `This file is ${formatFileSize(videoFile.size)}. The current upload limit is ${formatFileSize(upload.maxVideoBytes)}.`
+        )
+      }
+
+      const chunkSize = Number(upload.chunkSize)
+
+      if (!Number.isSafeInteger(chunkSize) || chunkSize < 5 * 1024 * 1024) {
+        throw new Error('The server returned an invalid upload chunk size.')
+      }
+
+      const uploadUrl = `https://api.cloudinary.com/v1_1/${encodeURIComponent(upload.cloudName)}/video/upload`
+      const totalChunks = Math.ceil(videoFile.size / chunkSize)
+      let completedBytes = 0
+      let finalCloudinaryResponse = null
+
+      for (let index = 0; index < totalChunks; index += 1) {
+        const start = index * chunkSize
+        const end = Math.min(start + chunkSize, videoFile.size)
+        const chunk = videoFile.slice(start, end)
+
+        const formData = new FormData()
+        formData.append('file', chunk, videoFile.name)
+        formData.append('api_key', upload.apiKey)
+        formData.append('timestamp', String(upload.timestamp))
+        formData.append('public_id', upload.publicId)
+        formData.append('signature', upload.signature)
+
+        setMessage(`Uploading video: chunk ${index + 1} of ${totalChunks}…`)
+
+        const cloudinaryResponse = await uploadCloudinaryChunk({
+          url: uploadUrl,
+          formData,
+          start,
+          end,
+          total: videoFile.size,
+          uploadId: upload.uploadId,
+          onProgress: (loaded) => {
+            const overallProgress = Math.min(
+              99,
+              Math.round(((completedBytes + loaded) / videoFile.size) * 100)
+            )
+            setUploadProgress(overallProgress)
+          },
+        })
+
+        completedBytes += chunk.size
+        finalCloudinaryResponse = cloudinaryResponse
+        setUploadProgress(Math.min(
+          99,
+          Math.round((completedBytes / videoFile.size) * 100)
+        ))
+      }
+
+      if (
+        finalCloudinaryResponse?.public_id !== upload.publicId ||
+        finalCloudinaryResponse?.resource_type !== 'video' ||
+        !finalCloudinaryResponse?.secure_url ||
+        Number(finalCloudinaryResponse?.bytes) !== videoFile.size
+      ) {
+        throw new Error('Cloudinary could not confirm that the complete video was uploaded.')
+      }
+
+      setMessage('Upload complete. Publishing your video…')
+
+      await api.post('/videos/upload/finalize', {
+        publicId: upload.publicId,
+        expectedBytes: videoFile.size,
+        title: title.trim(),
+        description,
+        category: uploadCategory,
+        allowDownload,
       })
-      setMessage('Your video was uploaded successfully.')
+
+      setUploadProgress(100)
+      setMessage('Your video was uploaded and published successfully.')
       setTitle('')
       setDescription('')
       setVideoFile(null)
@@ -104,7 +238,12 @@ function NexusTV() {
       setPage(1)
       await loadVideos()
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Video upload failed.')
+      setError(
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        'Video upload failed.'
+      )
     } finally {
       setUploading(false)
     }
@@ -181,7 +320,7 @@ function NexusTV() {
               </select>
             </label>
             <label>
-              Video file (MP4, MOV, WEBM or AVI; maximum 100 MB)
+              Video file (MP4, MOV, WEBM or AVI; large videos upload in chunks)
               <input
                 type="file"
                 accept="video/mp4,video/quicktime,video/webm,video/x-msvideo"
@@ -189,13 +328,29 @@ function NexusTV() {
                 required
               />
             </label>
+            {videoFile && (
+              <p className="tv-selected-file">
+                Selected: {videoFile.name} ({formatFileSize(videoFile.size)})
+              </p>
+            )}
+            {uploading && (
+              <div className="tv-upload-progress" aria-live="polite">
+                <div className="tv-upload-progress-heading">
+                  <span>Upload progress</span>
+                  <strong>{uploadProgress}%</strong>
+                </div>
+                <progress value={uploadProgress} max="100">
+                  {uploadProgress}%
+                </progress>
+              </div>
+            )}
             <label className="tv-download-check">
               <input type="checkbox" checked={allowDownload} onChange={(e) => setAllowDownload(e.target.checked)} />
               Allow other people to download this video
             </label>
             <p className="tv-upload-note">Only upload videos you own or have permission to share.</p>
             <button type="submit" disabled={uploading}>
-              {uploading ? 'Uploading video…' : 'Publish video'}
+              {uploading ? `Uploading video… ${uploadProgress}%` : 'Publish video'}
             </button>
           </form>
         )}
