@@ -131,3 +131,33 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+.nr-ai-action-confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nr-ai-action-confirmation button {
+  padding: 8px 15px;
+  border: 1px solid #14532d;
+  border-radius: 18px;
+  background: #14532d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.nr-ai-action-confirmation button.nr-ai-action-cancel {
+  border-color: #cbd5cf;
+  background: #fff;
+  color: #374151;
+}
+
+.nr-ai-action-confirmation button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

@@ -109,7 +109,7 @@ const markAsRead = async (req, res) => {
 
 const markAllAsRead = async (req, res) => {
     try {
-        await Notification.updateMany(
+        const result = await Notification.updateMany(
             {
                 recipient: req.user.userId,
                 read: false
@@ -120,8 +120,9 @@ const markAllAsRead = async (req, res) => {
         );
 
         return res.json({
-            message:
-                "All notifications marked as read"
+            success: true,
+            modifiedCount: result.modifiedCount,
+            message: "Notifications updated successfully"
         });
     } catch (error) {
         console.error(

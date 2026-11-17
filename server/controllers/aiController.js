@@ -1,6 +1,11 @@
 const Product = require("../models/Product");
 const Service = require("../models/Service");
 const Order = require("../models/Order");
+const mongoose = require("mongoose");
+const User = require("../models/User");
+const ReferralReward = require("../models/ReferralReward");
+const Notification = require("../models/Notification");
+const { REFERRAL_REWARD_AMOUNT } = require("../services/referralService");
 
 const requestLimits = new Map();
 
@@ -378,8 +383,172 @@ function getPaymentHelpReply(message) {
 }
 
 
+
+async function getMyReferralsReply(message, userId) {
+    const text = message.toLowerCase();
+
+    if (/\b(where|how)\b.*\b(find|open|view|access|see|check|get|are)\b.*\b(referrals?|referral code|invitation(?:\s+link)?)\b/.test(text)) {
+        return [
+            "To access Referrals & Rewards:",
+            "1. Open Referrals & Rewards from the NR Nexus navigation.",
+            "2. View your referral code and invitation link.",
+            "3. Copy or share your invitation with new members.",
+            "4. Review your successful referrals and earned rewards."
+        ].join("\n");
+    }
+
+    if (!userId) {
+        return [
+            "Please sign in to your NR Nexus account first.",
+            "After signing in, I can show your referral code, successful referrals and earned rewards.",
+            "You can also open Referrals & Rewards from the navigation."
+        ].join("\n");
+    }
+
+    const user = await User.findById(userId).select("referralCode");
+
+    if (!user) {
+        return "Your NR Nexus account could not be found. Please sign in again.";
+    }
+
+    // Match the existing Referrals endpoint behavior for older accounts.
+    if (!user.referralCode) {
+        await user.save();
+    }
+
+    const rewards = await ReferralReward.find({
+        inviter: user._id,
+        status: "earned"
+    })
+        .select("amount currency createdAt")
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const totalEarned = rewards.reduce(
+        (total, reward) => total + Number(reward.amount || 0),
+        0
+    );
+
+    return [
+        "Here is your NR Nexus referral summary:",
+        `Your referral code: ${user.referralCode}`,
+        `Reward per successful referral: ${REFERRAL_REWARD_AMOUNT.toLocaleString("en-US")} RWF`,
+        `Successful referrals: ${rewards.length}`,
+        `Total rewards earned: ${totalEarned.toLocaleString("en-US")} RWF`,
+        "",
+        "Reward conditions:",
+        "You earn the reward when a referred member completes their first successfully paid order and confirms delivery.",
+        "Only the inviter receives this reward. Each referred member can qualify only once.",
+        "",
+        "Open Referrals & Rewards to copy or share your invitation link and review your referral history."
+    ].join("\n");
+}
+
+
+async function getMyNotificationsReply(message, userId) {
+    const text = message.toLowerCase();
+
+    if (/\b(where|how)\b.*\b(find|open|view|access|see|check|get|are)\b.*\bnotifications?\b/.test(text)) {
+        return [
+            "To view your notifications:",
+            "1. Open Notifications from the NR Nexus navigation.",
+            "2. Review your recent activity and unread notifications.",
+            "3. Use Mark read or Mark all as read when you have reviewed them."
+        ].join("\n");
+    }
+
+    if (!userId) {
+        return [
+            "Please sign in to your NR Nexus account first.",
+            "After signing in, I can summarize your unread and recent notifications.",
+            "You can also open Notifications from the navigation."
+        ].join("\n");
+    }
+
+    const [unreadCount, notifications] = await Promise.all([
+        Notification.countDocuments({
+            recipient: userId,
+            read: false
+        }),
+        Notification.find({
+            recipient: userId
+        })
+            .select("type message read createdAt")
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .lean()
+    ]);
+
+    const lines = [
+        "Here is your NR Nexus notification summary:",
+        `Unread notifications: ${unreadCount}`,
+        `Recent notifications retrieved: ${notifications.length}`,
+        ""
+    ];
+
+    if (notifications.length === 0) {
+        lines.push("You have no notifications yet.");
+    } else {
+        lines.push("Your five most recent notifications:");
+
+        notifications.forEach((notification, index) => {
+            const date = notification.createdAt
+                ? new Date(notification.createdAt).toISOString().slice(0, 10)
+                : "Date unavailable";
+
+            const status = notification.read ? "Read" : "Unread";
+            const messageText = String(notification.message || "")
+                .replace(/\s+/g, " ")
+                .slice(0, 180);
+
+            lines.push(
+                `${index + 1}. ${messageText}`,
+                `   Type: ${(notification.type || "activity").replace(/_/g, " ")}`,
+                `   Status: ${status}`,
+                `   Date: ${date}`
+            );
+        });
+    }
+
+    lines.push(
+        "",
+        "Open Notifications in NR Nexus to review your activity or mark notifications as read."
+    );
+
+    return lines.join("\n");
+}
+
+
+
+function isMarkAllNotificationsRequest(message) {
+    const text = message.trim();
+
+    return (
+        /^(please\s+)?mark\s+(all|every)\s+(my\s+)?notifications?\s+(as\s+)?read[.!?]*$/i.test(text) ||
+        /^(please\s+)?mark\s+(my\s+)?unread\s+notifications?\s+as\s+read[.!?]*$/i.test(text)
+    );
+}
+
 function classifyNRIntent(message) {
     const text = message.toLowerCase();
+
+    if (
+        /\b(referrals?|referral code|invitation code|invitation link|referral rewards|successful referrals)\b/.test(text)
+    ) {
+        return "referrals";
+    }
+
+    if (
+        /\b(notifications?|unread notifications|notification count)\b/.test(text)
+    ) {
+        return "notifications";
+    }
+
+    if (
+        /\b(my sales|sales summary|sales report|seller earnings|my earnings|my revenue|total sales|how much have i sold|how many orders have i received|orders i received|orders from customers|customer orders|recent sales|show me sales|view my sales)\b/.test(text)
+    ) {
+        return "sales";
+    }
 
     if (
         /\b(my orders|my purchase history|order status|track my order|show me my orders|view my orders)\b/.test(text)
@@ -430,6 +599,15 @@ function classifyNRIntent(message) {
 
 async function routeNRCapability(message, userId, intent) {
     switch (intent) {
+        case "referrals":
+            return getMyReferralsReply(message, userId);
+
+        case "notifications":
+            return getMyNotificationsReply(message, userId);
+
+        case "sales":
+            return getMySalesReply(message, userId);
+
         case "orders": {
             const reply = await getMyOrdersReply(message, userId);
             return reply || getAppFeatureReply(message);
@@ -541,6 +719,221 @@ async function getMyOrdersReply(message, userId) {
     return lines.join("\n");
 }
 
+async function getMySalesReply(message, userId) {
+    const text = message.toLowerCase();
+
+    const mentionsOwnSales =
+        /\b(my sales|sales summary|sales report|seller earnings|my earnings|my revenue|total sales|how much have i sold|how many orders have i received|orders i received|orders from customers|customer orders|recent sales|show me sales|view my sales)\b/i.test(text);
+
+    if (!mentionsOwnSales) return null;
+
+    const asksWhereToView =
+        /\b(where|how)\b.*\b(view|find|open|access)\b.*\b(my sales|sales summary|sales report)\b/i.test(text);
+
+    if (asksWhereToView) {
+        return [
+            "To view your sales on NR Nexus:",
+            "1. Sign in to your seller account.",
+            "2. Open Seller Dashboard.",
+            "3. Open the sales section to review your orders and sales summary."
+        ].join("\n");
+    }
+
+    if (!userId) {
+        return [
+            "Please sign in to your NR Nexus seller account first.",
+            "After signing in, ask me again and I can summarize your own sales.",
+            "You can also open Seller Dashboard to review your sales."
+        ].join("\n");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return "I could not verify your seller account. Please sign in again and retry.";
+    }
+
+    const sellerId = new mongoose.Types.ObjectId(userId);
+
+    const [recentSales, summaries] = await Promise.all([
+        Order.find({ seller: userId })
+            .select(
+                "product quantity totalAmount currency paymentStatus directPaymentStatus status createdAt"
+            )
+            .populate("product", "title")
+            .sort({ createdAt: -1 })
+            .limit(5)
+            .lean(),
+
+        Order.aggregate([
+            {
+                $match: {
+                    seller: sellerId
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        $ifNull: ["$currency", "RWF"]
+                    },
+                    totalOrders: {
+                        $sum: 1
+                    },
+                    paidOrCompletedOrders: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$status", ["paid", "completed"]] },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    pendingOrders: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ["$status", "pending"] },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    totalSales: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$status", ["paid", "completed"]] },
+                                { $ifNull: ["$totalAmount", 0] },
+                                0
+                            ]
+                        }
+                    },
+                    totalCommission: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$status", ["paid", "completed"]] },
+                                { $ifNull: ["$commissionAmount", 0] },
+                                0
+                            ]
+                        }
+                    },
+                    sellerEarnings: {
+                        $sum: {
+                            $cond: [
+                                { $in: ["$status", ["paid", "completed"]] },
+                                { $ifNull: ["$sellerAmount", 0] },
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            {
+                $sort: {
+                    _id: 1
+                }
+            }
+        ])
+    ]);
+
+    if (!summaries.length) {
+        return "I could not find any sales linked to your seller account yet. Orders placed for your products will appear in your sales once customers purchase them.";
+    }
+
+    const totalOrders = summaries.reduce(
+        (sum, item) => sum + item.totalOrders,
+        0
+    );
+
+    const paidOrders = summaries.reduce(
+        (sum, item) => sum + item.paidOrCompletedOrders,
+        0
+    );
+
+    const pendingOrders = summaries.reduce(
+        (sum, item) => sum + item.pendingOrders,
+        0
+    );
+
+    const lines = [
+        "Here is your seller sales summary:",
+        `Orders received: ${totalOrders}`,
+        `Paid or completed orders: ${paidOrders}`,
+        `Pending orders: ${pendingOrders}`,
+        "",
+        "Financial totals (paid or completed orders only):"
+    ];
+
+    summaries.forEach(item => {
+        const currency = item._id || "RWF";
+
+        lines.push(
+            `${currency}:`,
+            `- Total sales: ${Number(item.totalSales || 0).toLocaleString("en-US")}`,
+            `- NR Nexus commission: ${Number(item.totalCommission || 0).toLocaleString("en-US")}`,
+            `- Seller earnings: ${Number(item.sellerEarnings || 0).toLocaleString("en-US")}`,
+            ""
+        );
+    });
+
+    if (recentSales.length) {
+        lines.push("Your five most recent sales:", "");
+
+        recentSales.forEach((order, index) => {
+            const productName =
+                order.product?.title || "Product details unavailable";
+
+            const orderDate = order.createdAt
+                ? new Date(order.createdAt).toLocaleDateString("en-GB")
+                : "Date unavailable";
+
+            let paymentLabel = "Payment status unavailable";
+
+            if (order.directPaymentStatus === "confirmed") {
+                paymentLabel = "Confirmed by seller (direct payment)";
+            } else if (order.paymentStatus === "successful") {
+                paymentLabel = "Paid";
+            } else if (order.directPaymentStatus === "submitted") {
+                paymentLabel = "Submitted for seller confirmation";
+            } else if (order.directPaymentStatus === "rejected") {
+                paymentLabel = "Direct payment rejected";
+            } else if (order.paymentStatus) {
+                paymentLabel = order.paymentStatus.replace(/_/g, " ");
+            }
+
+            lines.push(
+                `${index + 1}. ${productName}`,
+                `   Date: ${orderDate}`,
+                `   Order status: ${(order.status || "unknown").replace(/_/g, " ")}`,
+                `   Payment: ${paymentLabel}`,
+                `   Quantity: ${order.quantity}`,
+                `   Total: ${Number(order.totalAmount || 0).toLocaleString("en-US")} ${order.currency || "RWF"}`,
+                ""
+            );
+        });
+    }
+
+    lines.push("For complete details, open Seller Dashboard in NR Nexus.");
+
+    return lines.join("\n");
+}
+
+
+const NR_PAGE_CONTEXTS = Object.freeze({
+    login: "Login page",
+    marketplace: "Marketplace page",
+    product_detail: "Product details page",
+    services: "Services and jobs page",
+    messages: "Messages page",
+    my_orders: "My Orders page",
+    my_products: "My Products page",
+    favorites: "Favorites page",
+    nexus_tv: "NEXUS TV page",
+    video_detail: "Video viewing page",
+    seller_store: "Seller Store page",
+    seller_dashboard: "Seller Dashboard page",
+    referrals: "Referrals page",
+    notifications: "Notifications page",
+    admin: "Admin Dashboard page",
+    other: "Another NR Nexus page"
+});
+
 exports.chatWithNR = async (req, res) => {
     try {
         const ip = req.ip || "unknown";
@@ -560,6 +953,44 @@ exports.chatWithNR = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: "Your message is too long. Please keep it under 1,000 characters."
+            });
+        }
+
+        const requestedPage = req.body.pageContext?.page;
+        const currentPage = Object.prototype.hasOwnProperty.call(
+            NR_PAGE_CONTEXTS,
+            requestedPage
+        )
+            ? NR_PAGE_CONTEXTS[requestedPage]
+            : "Unknown page";
+
+        if (isMarkAllNotificationsRequest(message)) {
+            if (!req.user?.userId) {
+                return res.json({
+                    success: true,
+                    reply: "Please sign in to your NR Nexus account before marking notifications as read."
+                });
+            }
+
+            const unreadCount = await Notification.countDocuments({
+                recipient: req.user.userId,
+                read: false
+            });
+
+            if (unreadCount === 0) {
+                return res.json({
+                    success: true,
+                    reply: "You have no unread notifications. No changes are needed."
+                });
+            }
+
+            return res.json({
+                success: true,
+                reply: `You have ${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}. Would you like me to mark all of them as read?`,
+                actionConfirmation: {
+                    type: "mark_all_notifications_read",
+                    unreadCount
+                }
             });
         }
 
@@ -660,6 +1091,13 @@ GENERAL QUESTIONS:
 - You may answer general questions that are unrelated to RWh​​atsApp.
 - Clearly distinguish general knowledge from information verified in the app.
 - If you do not know an answer, admit that you do not know rather than inventing one.
+
+CURRENT PAGE CONTEXT:
+- The customer is currently viewing: ${currentPage}.
+- Use this context to make instructions relevant to the page they are viewing.
+- Page context is informational only. It does not prove identity, ownership or authorization.
+- Never assume you can see the customer's screen, private page contents or selected records.
+- If the page context is unknown, ask the customer what page they mean.
 
 LIVE MARKETPLACE DATA:
 ${JSON.stringify(marketplaceData)}
