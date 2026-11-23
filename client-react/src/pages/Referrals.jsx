@@ -131,7 +131,7 @@ export default function Referrals() {
     <main className="referrals-page">
       <header className="referrals-header">
         <a className="referrals-brand" href="/marketplace">
-          <span className="referrals-logo">R</span>
+          <img src="/nr-nexus-logo.png" alt="NR Nexus logo" style={{ width: 42, height: 42, objectFit: "contain" }} />
           <span>
             <strong>NR Nexus</strong>
             <small>Chat. Share. Trade together.</small>

@@ -15,6 +15,7 @@ import SellerStore from './pages/SellerStore'
 import Messages from './pages/Messages'
 import MyOrders from './pages/MyOrders'
 import MyProducts from './pages/MyProducts'
+import Profile from './pages/Profile'
 import Notifications from './pages/Notifications'
 import Referrals from './pages/Referrals'
 import SellerDashboard from './pages/SellerDashboard'
@@ -168,7 +169,7 @@ function LoginPage() {
   return (
     <main className="login-page">
       <header className="brand">
-        <div className="brand-icon" aria-hidden="true">R</div>
+        <img className="brand-logo-image" src="/nr-nexus-logo.png" alt="NR Nexus logo" />
         <div>
           <h1>NR Nexus</h1>
           <p>Chat. Share. Trade together.</p>
@@ -304,6 +305,7 @@ function App() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/services" element={<Services />} />
         <Route path="/tv" element={<NexusTV />} />
         <Route path="/tv/:id" element={<WatchVideo />} />

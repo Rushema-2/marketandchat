@@ -248,7 +248,7 @@ function SellerStore() {
     <main className="seller-store-page">
       <header className="seller-store-header">
         <a className="seller-store-brand" href="/marketplace">
-          <span className="seller-store-logo">R</span>
+          <img src="/nr-nexus-logo.png" alt="NR Nexus logo" style={{ width: 40, height: 40, objectFit: "contain" }} />
           <span>NR Nexus</span>
         </a>
 

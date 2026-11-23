@@ -266,3 +266,12 @@
 .google-phone-form .google-cancel-button:hover:not(:disabled) {
   background: #e1e8eb;
 }
+
+/* NR Nexus official green-and-white branding */
+.brand-logo-image {
+  display: block;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  flex-shrink: 0;
+}

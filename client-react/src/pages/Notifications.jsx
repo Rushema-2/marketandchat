@@ -105,7 +105,7 @@ export default function Notifications() {
     <main className="notifications-page">
       <header className="notifications-header">
         <a className="notifications-brand" href="/marketplace">
-          <span className="notifications-logo">R</span>
+          <img src="/nr-nexus-logo.png" alt="NR Nexus logo" style={{ width: 42, height: 42, objectFit: "contain" }} />
           <span>
             <strong>NR Nexus</strong>
             <small>Chat. Share. Trade together.</small>
