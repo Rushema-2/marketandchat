@@ -254,7 +254,7 @@ function NRChatWidget() {
 
           <div className="nr-ai-messages">
             <div className="nr-ai-message nr-ai-bot-message">
-              Hello! 👋 I am NR AI. I can help you use RWh​​atsApp and find what you need.
+              Hello! 👋 I am NR AI. I can help you use RWhatsApp and find what you need.
               <br />
               <strong>You can ask me about:</strong>
             </div>

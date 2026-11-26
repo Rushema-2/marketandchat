@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../api'
 import './NexusTV.css'
@@ -85,8 +85,13 @@ function NexusTV() {
   const [allowDownload, setAllowDownload] = useState(false)
   const [videoFile, setVideoFile] = useState(null)
   const [showUpload, setShowUpload] = useState(false)
+  const searchRef = useRef(search)
 
-  async function loadVideos() {
+  useEffect(() => {
+    searchRef.current = search
+  }, [search])
+
+  const loadVideos = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -96,7 +101,7 @@ function NexusTV() {
           page,
           limit: 12,
           ...(myVideos || category === 'all' ? {} : { category }),
-          ...(search.trim() ? { search: search.trim() } : {}),
+          ...(searchRef.current.trim() ? { search: searchRef.current.trim() } : {}),
         },
       })
       setVideos(response.data.videos || [])
@@ -106,11 +111,21 @@ function NexusTV() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, category, myVideos])
 
   useEffect(() => {
-    loadVideos()
-  }, [page, category, myVideos])
+    let active = true
+
+    Promise.resolve().then(() => {
+      if (active) {
+        loadVideos()
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [loadVideos])
 
   async function handleSearch(event) {
     event.preventDefault()

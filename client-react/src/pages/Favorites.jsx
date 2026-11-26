@@ -15,9 +15,13 @@ function formatPrice(price, currency = 'RWF') {
 }
 
 function Favorites() {
+  const hasToken = Boolean(localStorage.getItem('token'))
+
   const [favorites, setFavorites] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(hasToken)
+  const [error, setError] = useState(
+    hasToken ? '' : 'Please sign in to view your favorites.'
+  )
   const [removing, setRemoving] = useState({})
 
   async function loadFavorites() {
@@ -39,14 +43,18 @@ function Favorites() {
   }
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) {
-      setError('Please sign in to view your favorites.')
-      setLoading(false)
-      return
-    }
+    if (!hasToken) return
 
-    loadFavorites()
-  }, [])
+    let active = true
+
+    Promise.resolve().then(() => {
+      if (active) loadFavorites()
+    })
+
+    return () => {
+      active = false
+    }
+  }, [hasToken])
 
   async function removeFavorite(productId) {
     setRemoving((current) => ({ ...current, [productId]: true }))

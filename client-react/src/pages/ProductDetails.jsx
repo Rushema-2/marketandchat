@@ -128,8 +128,15 @@ function ProductDetails() {
       }
     }
 
-    if (id) loadReviews()
-    else setReviewsLoading(false)
+    Promise.resolve().then(() => {
+      if (cancelled) return
+
+      if (id) {
+        loadReviews()
+      } else {
+        setReviewsLoading(false)
+      }
+    })
 
     return () => {
       cancelled = true

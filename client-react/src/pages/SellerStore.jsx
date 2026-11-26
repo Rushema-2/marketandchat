@@ -76,12 +76,16 @@ function SellerStore() {
       }
     }
 
-    if (sellerId) {
-      loadStore()
-    } else {
-      setError('Seller ID is missing.')
-      setLoading(false)
-    }
+    Promise.resolve().then(() => {
+      if (cancelled) return
+
+      if (sellerId) {
+        loadStore()
+      } else {
+        setError('Seller ID is missing.')
+        setLoading(false)
+      }
+    })
 
     return () => {
       cancelled = true
@@ -128,20 +132,39 @@ function SellerStore() {
       }
     }
 
-    if (sellerId) loadSellerReviews()
-    else setReviewsLoading(false)
+    Promise.resolve().then(() => {
+      if (cancelled) return
 
-    return () => { cancelled = true }
+      if (sellerId) {
+        loadSellerReviews()
+      } else {
+        setReviewsLoading(false)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [sellerId])
 
   useEffect(() => {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    setCurrentUserId(String(user._id || user.id || user.userId || ''))
-  } catch {
-    setCurrentUserId('')
-  }
-}, [])
+    let active = true
+
+    Promise.resolve().then(() => {
+      if (!active) return
+
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        setCurrentUserId(String(user._id || user.id || user.userId || ''))
+      } catch {
+        setCurrentUserId('')
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
 
   async function handleSaveSellerReview(event) {
@@ -208,7 +231,7 @@ function SellerStore() {
       return
     }
 
-    let currentUserId = ''
+    let currentUserId
 
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}')

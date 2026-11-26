@@ -124,10 +124,20 @@ export default function AdminDashboard() {
   }, [])
 
   useEffect(() => {
-    if (section === 'overview') loadOverview()
-    else if (section === 'analytics') loadAnalytics()
-    else if (section === 'performance') loadPerformance()
-    else loadList(section, page)
+    let active = true
+
+    Promise.resolve().then(() => {
+      if (!active) return
+
+      if (section === 'overview') loadOverview()
+      else if (section === 'analytics') loadAnalytics()
+      else if (section === 'performance') loadPerformance()
+      else loadList(section, page)
+    })
+
+    return () => {
+      active = false
+    }
   }, [section, page, loadOverview, loadAnalytics, loadPerformance, loadList])
 
   if (!localStorage.getItem('token')) {
@@ -171,7 +181,7 @@ export default function AdminDashboard() {
   async function updateSellerVerification(user) {
     if (!user?._id || updatingId === user._id) return
 
-    const nextValue = !Boolean(user.isVerifiedSeller)
+    const nextValue = !user.isVerifiedSeller
     const action = nextValue ? 'verify' : 'revoke verification for'
 
     if (!window.confirm(`Are you sure you want to ${action} ${personName(user)}?`)) {

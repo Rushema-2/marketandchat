@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import NotificationBell from '../components/NotificationBell'
 import VerifiedSellerBadge from '../components/VerifiedSellerBadge'
@@ -26,6 +27,7 @@ function formatPrice(price, currency = 'RWF') {
 }
 
 function Marketplace() {
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
@@ -91,7 +93,7 @@ function Marketplace() {
   async function toggleFavorite(productId) {
     if (!localStorage.getItem('token')) {
       window.alert('Please sign in to save favorites.')
-      window.location.href = '/'
+      navigate('/')
       return
     }
 
@@ -147,7 +149,7 @@ function Marketplace() {
   function logout() {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    window.location.href = '/'
+    navigate('/')
   }
 
   return (

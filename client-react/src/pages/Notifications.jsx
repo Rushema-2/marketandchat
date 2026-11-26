@@ -51,7 +51,17 @@ export default function Notifications() {
   }, [])
 
   useEffect(() => {
-    loadNotifications()
+    let active = true
+
+    Promise.resolve().then(() => {
+      if (active) {
+        loadNotifications()
+      }
+    })
+
+    return () => {
+      active = false
+    }
   }, [loadNotifications])
 
   const unreadCount = notifications.filter((item) => !item.read).length

@@ -1,26 +1,27 @@
 
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { captureMarketingAttribution } from './services/marketingAttribution'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { loginUser, googleLoginUser } from './services/authService'
 import { GoogleLogin } from '@react-oauth/google'
-import Register from './components/Register'
-import Marketplace from './pages/Marketplace'
-import Services from './pages/Services'
-import NexusTV from './pages/NexusTV'
-import WatchVideo from './pages/WatchVideo'
-import Favorites from './pages/Favorites'
-import ProductDetails from './pages/ProductDetails'
-import SellerStore from './pages/SellerStore'
-import Messages from './pages/Messages'
-import MyOrders from './pages/MyOrders'
-import MyProducts from './pages/MyProducts'
-import Profile from './pages/Profile'
-import Notifications from './pages/Notifications'
-import Referrals from './pages/Referrals'
-import SellerDashboard from './pages/SellerDashboard'
-import AdminDashboard from './pages/AdminDashboard'
 import NRChatWidget from './components/NRChatWidget'
+
+const Register = lazy(() => import('./components/Register'))
+const Marketplace = lazy(() => import('./pages/Marketplace'))
+const Services = lazy(() => import('./pages/Services'))
+const NexusTV = lazy(() => import('./pages/NexusTV'))
+const WatchVideo = lazy(() => import('./pages/WatchVideo'))
+const Favorites = lazy(() => import('./pages/Favorites'))
+const ProductDetails = lazy(() => import('./pages/ProductDetails'))
+const SellerStore = lazy(() => import('./pages/SellerStore'))
+const Messages = lazy(() => import('./pages/Messages'))
+const MyOrders = lazy(() => import('./pages/MyOrders'))
+const MyProducts = lazy(() => import('./pages/MyProducts'))
+const Profile = lazy(() => import('./pages/Profile'))
+const Notifications = lazy(() => import('./pages/Notifications'))
+const Referrals = lazy(() => import('./pages/Referrals'))
+const SellerDashboard = lazy(() => import('./pages/SellerDashboard'))
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 import './App.css'
 
 function LoginPage() {
@@ -301,26 +302,34 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/marketplace" element={<Marketplace />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/tv" element={<NexusTV />} />
-        <Route path="/tv/:id" element={<WatchVideo />} />
-        <Route path="/favorites" element={<Favorites />} />
-        <Route path="/product/:id" element={<ProductDetails />} />
+      <Suspense
+        fallback={
+          <main role="status" aria-live="polite">
+            Loading page...
+          </main>
+        }
+      >
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/tv" element={<NexusTV />} />
+          <Route path="/tv/:id" element={<WatchVideo />} />
+          <Route path="/favorites" element={<Favorites />} />
+          <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/store/:sellerId" element={<SellerStore />} />
-        <Route path="/messages" element={<Messages />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/referrals" element={<Referrals />} />
-        <Route path="/my-orders" element={<MyOrders />} />
-        <Route path="/my-products" element={<MyProducts />} />
-        <Route path="/seller-dashboard" element={<SellerDashboard />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/referrals" element={<Referrals />} />
+          <Route path="/my-orders" element={<MyOrders />} />
+          <Route path="/my-products" element={<MyProducts />} />
+          <Route path="/seller-dashboard" element={<SellerDashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
       <NRChatWidget />
     </BrowserRouter>
   )

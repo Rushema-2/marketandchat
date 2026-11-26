@@ -27,11 +27,30 @@ export default function MyOrders() {
   }
 
   useEffect(() => {
-    loadOrders()
-      .catch((err) => setError(
-        err.response?.data?.message || 'Could not load your orders.'
-      ))
-      .finally(() => setLoading(false))
+    let active = true
+
+    api.get('/orders/my-orders')
+      .then(({ data }) => {
+        if (active) {
+          setOrders(data.orders || [])
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(
+            err.response?.data?.message || 'Could not load your orders.'
+          )
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
   }, [])
 
   async function loadDirectPaymentDetails(orderId) {
@@ -362,6 +381,3 @@ export default function MyOrders() {
     </main>
   )
 }
-
-
-<style-placeholder-do-not-use />

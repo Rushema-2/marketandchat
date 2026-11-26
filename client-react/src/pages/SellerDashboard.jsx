@@ -97,7 +97,17 @@ export default function SellerDashboard() {
   }, [])
 
   useEffect(() => {
-    loadDashboard()
+    let active = true
+
+    Promise.resolve().then(() => {
+      if (active) {
+        loadDashboard()
+      }
+    })
+
+    return () => {
+      active = false
+    }
   }, [loadDashboard])
 
   useEffect(() => {

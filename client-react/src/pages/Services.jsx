@@ -117,7 +117,15 @@ function Services() {
   }, [activeTab, search, location, category, currentPage])
 
   useEffect(() => {
-    loadServices()
+    let active = true
+
+    Promise.resolve().then(() => {
+      if (active) loadServices()
+    })
+
+    return () => {
+      active = false
+    }
   }, [loadServices])
 
   function updateForm(event) {
@@ -246,7 +254,7 @@ function Services() {
         })
         setServices(mineResponse.data.services || [])
         setPagination(mineResponse.data.pagination || { total: 0, page: 1, limit: 9, totalPages: 0 })
-      } catch (refreshError) {
+      } catch {
         setError('Listing saved, but the list could not be refreshed. Please reload.')
       }
     } catch (err) {

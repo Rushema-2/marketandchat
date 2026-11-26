@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import api from '../api'
@@ -187,7 +187,7 @@ socket.on('userOffline', ({ userId }) => {
     }
   }, [])
 
-  async function openConversation(conversation) {
+  const openConversation = useCallback(async (conversation) => {
     const previous = selectedRef.current
 
     if (previous?._id && socketRef.current?.connected) {
@@ -225,11 +225,22 @@ socket.on('userOffline', ({ userId }) => {
     } catch (err) {
       setError(err.response?.data?.message || 'Could not load messages.')
     }
-  }
+  }, [])
 
   useEffect(() => {
-    if (!requestedSellerId || !conversations.length) return
-    if (openedSellerRef.current === requestedSellerId) return
+    let active = true
+
+    if (!requestedSellerId || !conversations.length) {
+      return () => {
+        active = false
+      }
+    }
+
+    if (openedSellerRef.current === requestedSellerId) {
+      return () => {
+        active = false
+      }
+    }
 
     const conversation = conversations.find((item) =>
       (item.participants || []).some(
@@ -239,9 +250,18 @@ socket.on('userOffline', ({ userId }) => {
 
     if (conversation) {
       openedSellerRef.current = requestedSellerId
-      openConversation(conversation)
+
+      Promise.resolve().then(() => {
+        if (active) {
+          openConversation(conversation)
+        }
+      })
     }
-  }, [conversations, requestedSellerId])
+
+    return () => {
+      active = false
+    }
+  }, [conversations, requestedSellerId, openConversation])
 
   function sendMessage(event) {
     event.preventDefault()
